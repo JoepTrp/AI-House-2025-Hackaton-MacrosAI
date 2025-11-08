@@ -8,11 +8,13 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
-# conda install -c conda-forge fastapi uvicorn python-dotenv
+from datetime import datetime
+# conda install -c conda-forge fastapi uvicorn python-dotenv numpy requests
 # pip install openai
 
 import recipe_selection
 import models
+import smart_reminders
 
 # --------------------------- config ---------------------------
 load_dotenv()
@@ -50,18 +52,8 @@ class OnboardingData(BaseModel):
     goal: Goal
     activity_level: ActivityLevel
 
-class RecipeSelectionContext(BaseModel):
-    user_id: str
-    macros: models.Macros
-    goals: Dict[str, str]  # e.g. {"goal": "lose_weight", "diet": "keto"}
-    liked_recipes: List[recipe_selection.RecipeLink] = Field(default_factory=list)
-    disliked_recipes: List[recipe_selection.RecipeLink] = Field(default_factory=list)
-    maybe_later_recipes: List[recipe_selection.RecipeLink] = Field(default_factory=list)
-    preference_vector_title: Optional[List[float]] = None
-    preference_vector_tags: Optional[List[float]] = None
-
 # --------------------------- global variable ------------------
-CURRENT_USER_CONTEXT: Optional[RecipeSelectionContext] = None
+CURRENT_USER_CONTEXT: Optional[models.RecipeSelectionContext] = None
 
 # --------------------------- helper ---------------------------
 def calculate_targets(data: OnboardingData) -> Dict[str, int]:
@@ -100,14 +92,14 @@ async def handle_onboarding(data: OnboardingData):
     )
     user_goals = {"goal": data.goal.value}
 
-    CURRENT_USER_CONTEXT = RecipeSelectionContext(
+    CURRENT_USER_CONTEXT = models.RecipeSelectionContext(
         user_id=data.name, 
         macros=user_macros,
         goals=user_goals
     )
     
     print(f"New profile saved: {json.dumps(CURRENT_USER_CONTEXT, indent=2)}")
-    return {"message": f"Welcome, {data.name}!", "targets": targets}
+    return {"success"}
 
 @app.post("/get-meal-batch")
 async def get_meal_batch():
@@ -127,6 +119,71 @@ async def get_meal_batch():
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")
         return {"error": "Failed to generate recipes."}
+
+@app.post("/checkout")
+async def checkout_cart(cart: models.Cart):
+    """
+    Receives the user's cart, logs purchases,
+    and recalculates purchase patterns.
+    """
+    global CURRENT_USER_CONTEXT
+    if not CURRENT_USER_CONTEXT:
+        return {"error": "User profile not set. Please complete onboarding first."}
+
+    context = CURRENT_USER_CONTEXT
+    now = datetime.now()
+
+    # 1. Log every item in the cart to the user's history
+    for item in cart.items:
+        record = models.PurchaseRecord(
+            item_name=item.name.lower().strip(), # Normalize name
+            purchase_date=now
+        )
+        context.purchase_history.append(record)
+
+    # 2. Update the purchase patterns by analyzing the full history
+    context.purchase_patterns = smart_reminders.update_purchase_patterns(context.purchase_history)
+    
+    print(f"Checkout complete. New patterns: {context.purchase_patterns}")
+    
+    return {"message": "Checkout successful", "patterns_updated": context.purchase_patterns}
+
+# --- NEW: Endpoint for the frontend to get reminders ---
+@app.get("/get-reminders", response_model=Dict[str, List[models.Reminder]])
+async def get_reminders():
+    """
+    Checks user's purchase patterns and returns a list of items
+    they may need to re-stock.
+    """
+    global CURRENT_USER_CONTEXT
+    if not CURRENT_USER_CONTEXT:
+        return {"reminders": []} # Return empty list, not an error
+
+    context = CURRENT_USER_CONTEXT
+    today = datetime.now()
+    reminders = []
+    
+    # Get the last time each item was bought
+    latest_purchase_dates = smart_reminders.get_latest_purchase_dates(context.purchase_history)
+
+    # Check each known pattern against the last purchase date
+    for item_name, avg_interval in context.purchase_patterns.items():
+        if item_name not in latest_purchase_dates:
+            continue
+            
+        last_purchase_date = latest_purchase_dates[item_name]
+        days_since_last_purchase = (today - last_purchase_date).days
+        
+        # The core logic: Is it time to buy again?
+        if days_since_last_purchase > avg_interval:
+            reminder = models.Reminder(
+                item_name=item_name.title(), # Capitalize for display
+                last_purchased_days_ago=days_since_last_purchase,
+                typical_interval_days=int(avg_interval)
+            )
+            reminders.append(reminder)
+            
+    return {"reminders": reminders}
 
 # main
 if __name__ == "__main__":

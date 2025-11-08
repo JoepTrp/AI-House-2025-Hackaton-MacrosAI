@@ -18,34 +18,6 @@ from models import Macros
 # STEP 0: Define Models
 # -----------------------
 
-
-
-
-class RecipeIdea(BaseModel):
-    recipe_title: str
-    main_ingredients: List[str]
-    tags: List[str]
-    estimated_macros: Optional[Macros] = None
-
-
-
-class RecipeLink(BaseModel):
-    title: str
-    url: str
-    source: str
-
-
-class RecipeSelectionContext(BaseModel):
-    user_id: str
-    macros: Macros
-    goals: Dict[str, str]  # e.g. {"goal": "lose_weight", "diet": "keto"}
-    liked_recipes: List[RecipeLink] = Field(default_factory=list)
-    disliked_recipes: List[RecipeLink] = Field(default_factory=list)
-    maybe_later_recipes: List[RecipeLink] = Field(default_factory=list)
-    preference_vector_title: Optional[List[float]] = None
-    preference_vector_tags: Optional[List[float]] = None
-
-
 client = OpenAI(
     api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
     base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
