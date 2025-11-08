@@ -13,8 +13,8 @@ from typing import List, Dict, Any, Optional
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
 client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url="https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
+    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
+    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
 )
 
 app.add_middleware(
