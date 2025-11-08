@@ -19,7 +19,10 @@ from typing import List, Dict, Any, Optional
 load_dotenv()
 
 app = FastAPI(title="Smart Grocery Agent Backend")
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
+)
 
 # **CRITICAL FOR MOBILE APP**
 # This middleware allows your React Native / Flutter app to make
