@@ -60,7 +60,7 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Welcome, {user?.username || 'Guest'}</Text>
+        <Text style={styles.title}>Welcome back!</Text>
 
         <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
           <Ionicons name="settings-outline" size={24} color="#333" />

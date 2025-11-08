@@ -1,19 +1,47 @@
-
 import React from 'react';
-import { SafeAreaView, View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, useNavigate } from 'react-native';
+import { SafeAreaView, View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useUser } from '../context/UserContext';
 
-const settingsData = [
-  { id: '1', title: 'Account' },
-  { id: '2', title: 'Notifications' },
-  { id: '3', title: 'Privacy' },
-  { id: '4', title: 'Display' },
-  { id: '5', title: 'About' },
-  { id: '6', title: 'Help' },
-];
+export default function Settings({ navigation }) {
+  const { logout } = useUser();
 
-export default function Settings({navigation}) {
+  const settingsData = [
+    { id: '1', title: 'Account' },
+    { id: '2', title: 'Notifications' },
+    { id: '3', title: 'Privacy' },
+    { id: '4', title: 'Display' },
+    { id: '5', title: 'About' },
+    { id: '6', title: 'Help' },
+    {
+      id: '7',
+      title: 'Log out',
+      action: () =>
+        Alert.alert('Log out', 'Are you sure you want to log out?', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Log out',
+            style: 'destructive',
+            onPress: () => {
+              logout();
+              // reset navigation to Login screen (replace with your auth flow route)
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            },
+          },
+        ]),
+    },
+  ];
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.row} onPress={() => Alert.alert(item.title)}>
+    <TouchableOpacity
+      style={styles.row}
+      onPress={() => {
+        if (item.action) {
+          item.action();
+        } else {
+          Alert.alert(item.title);
+        }
+      }}
+    >
       <Text style={styles.rowText}>{item.title}</Text>
       <Text style={styles.chev}>›</Text>
     </TouchableOpacity>

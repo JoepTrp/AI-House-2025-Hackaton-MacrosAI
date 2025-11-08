@@ -18,7 +18,7 @@ export default function LoginScreen({ navigation }) {
         style={styles.logo}
         />
         <Text style={styles.subtitle}>
-          Hi, Welcome to your health boosting joruney!
+          Welcome to your health boosting journey!
         </Text>
         
 
@@ -51,7 +51,7 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#fff" },
   inner: { flex: 1, justifyContent: 'center', padding: 24 },
   title: { fontSize: 36, fontWeight: '800', textAlign: 'center', marginBottom: 0 },
   subtitle: { fontSize: 16, textAlign: 'center', color: '#444', marginBottom: 24 },
