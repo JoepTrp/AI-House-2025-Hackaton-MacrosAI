@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from win32con import BS_HOLLOW
 
 class Macros(BaseModel):
     calories: int
