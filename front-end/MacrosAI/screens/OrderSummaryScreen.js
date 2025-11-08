@@ -74,7 +74,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
   const mealsList = selectedMeals.map(m => m.name).join(', ');
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>Order Summary</Text>
 
       <Text style={styles.heading}>Meals</Text>
@@ -152,7 +152,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
           <Text style={styles.buttonText}>Confirm</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 

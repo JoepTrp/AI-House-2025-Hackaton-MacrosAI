@@ -58,13 +58,29 @@ export default function HomeScreen({ navigation }) {
     Alert.alert('Saved', `${meal.name} added to liked meals`);
   };
 
+  const triggerLocalNotification = async () => {
+  console.log("notification request made.");
+  
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Test Notification",
+      body: 'This is a test notification from your app',
+      data: { screen: 'Home' },
+    },
+    trigger: { seconds: 5 }, 
+  });
+};
+
   const handleDone = () => {
     if (selectedMeals.length === 0) {
       Alert.alert('No meals selected', 'Please select some meals first.');
+      triggerLocalNotification();
       return;
     }
     navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, clearMeals: () => setSelectedMeals([])});
   };
+
+  
 
   return (
     <View style={styles.container}>
