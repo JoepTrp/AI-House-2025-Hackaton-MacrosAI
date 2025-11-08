@@ -11,6 +11,9 @@ from typing import List, Dict, Any, Optional
 # conda install -c conda-forge fastapi uvicorn python-dotenv
 # pip install openai
 
+import recipe_selection
+import models
+
 # --------------------------- config ---------------------------
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
@@ -27,10 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# init global variables
-CURRENT_USER_PROFILE: Dict[str, Any] = {}
-
-# onboarding models
+# --------------------------- onboarding models ----------------
 class Goal(str, Enum):
     lose_weight = "lose weight"
     gain_muscle = "gain muscle"
@@ -50,7 +50,20 @@ class OnboardingData(BaseModel):
     goal: Goal
     activity_level: ActivityLevel
 
-# calculate macros
+class RecipeSelectionContext(BaseModel):
+    user_id: str
+    macros: models.Macros
+    goals: Dict[str, str]  # e.g. {"goal": "lose_weight", "diet": "keto"}
+    liked_recipes: List[recipe_selection.RecipeLink] = Field(default_factory=list)
+    disliked_recipes: List[recipe_selection.RecipeLink] = Field(default_factory=list)
+    maybe_later_recipes: List[recipe_selection.RecipeLink] = Field(default_factory=list)
+    preference_vector_title: Optional[List[float]] = None
+    preference_vector_tags: Optional[List[float]] = None
+
+# --------------------------- global variable ------------------
+CURRENT_USER_CONTEXT: Optional[RecipeSelectionContext] = None
+
+# --------------------------- helper ---------------------------
 def calculate_targets(data: OnboardingData) -> Dict[str, int]:
     bmr = (10 * data.weight) + (6.25 * data.height) - (5 * data.age) + 5
     activity_multipliers = {
@@ -75,21 +88,45 @@ def calculate_targets(data: OnboardingData) -> Dict[str, int]:
 # initialize user profile
 @app.post("/onboarding")
 async def handle_onboarding(data: OnboardingData):
-    global CURRENT_USER_PROFILE
+    global CURRENT_USER_CONTEXT
     
     targets = calculate_targets(data)
-    CURRENT_USER_PROFILE = data.model_dump()
-    CURRENT_USER_PROFILE.update(targets)
+
+    user_macros = models.Macros(
+        calories=targets.get("target_calories"),
+        protein=targets.get("target_protein"),
+        carbs=targets.get("target_carbs"),
+        fat=targets.get("target_fat")
+    )
+    user_goals = {"goal": data.goal.value}
+
+    CURRENT_USER_CONTEXT = RecipeSelectionContext(
+        user_id=data.name, 
+        macros=user_macros,
+        goals=user_goals
+    )
     
-    print(f"New profile saved: {json.dumps(CURRENT_USER_PROFILE, indent=2)}")
+    print(f"New profile saved: {json.dumps(CURRENT_USER_CONTEXT, indent=2)}")
     return {"message": f"Welcome, {data.name}!", "targets": targets}
 
 @app.post("/get-meal-batch")
 async def get_meal_batch():
-    if not CURRENT_USER_PROFILE:
+    global CURRENT_USER_CONTEXT
+    if not CURRENT_USER_CONTEXT:
         return {"error": "User profile not set. Please complete onboarding first."}
     
-    return("fitting json")
+    context = CURRENT_USER_CONTEXT 
+    try:
+        ideas = recipe_selection.generate_recipe_ideas(context, 5)
+        nested_links_list = recipe_selection.find_recipe_links(ideas)
+        flat_links_list = [link for sublist in nested_links_list for link in sublist]
+        
+
+        return {"recipes": flat_links_list}
+        
+    except Exception as e:
+        print(f"Error in recipe pipeline: {e}")
+        return {"error": "Failed to generate recipes."}
 
 # main
 if __name__ == "__main__":
