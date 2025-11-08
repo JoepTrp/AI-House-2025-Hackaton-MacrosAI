@@ -8,9 +8,45 @@ import HomeScreen from './screens/HomeScreen';
 import  SettingsScreen  from './screens/Settings';
 import EditRecipesScreen from './screens/EditScreen';
 import OrderSummaryScreen from './screens/OrderSummaryScreen';
-import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+
+// iOS: show notifications even in foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPushNotificationsAsync() {
+  let token;
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    alert('Failed to get push token!');
+    return;
+  }
+
+  token = (await Notifications.getExpoPushTokenAsync()).data;
+  console.log('Expo Push Token:', token);
+
+  // Send the token to your server
+  // await fetch('https://your-server.com/api/save-token', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ token }),
+  // });
+
+  return token;
+}
 
 
 const Stack = createNativeStackNavigator();
@@ -44,31 +80,24 @@ const Tab = createBottomTabNavigator();
 
 function RootNavigator() {
   const { user } = useUser();
-  const [expoPushToken, setExpoPushToken] = useState('');
-  const [notification, setNotification] = useState(false);
-
-  console.log(user);
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
 
   useEffect(() => {
-    // Register device and get token
-    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+  const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+    console.log('Notification received in foreground:', notification);
+  });
 
-    // Listen for incoming notifications when app is foregrounded
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      setNotification(notification);
-      console.log('Notification Received:', notification);
-    });
-    //Listen for notifications 
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification Response:', response);
-      // Navigate or handle based on response.notification.request.content.data
-    });
+  const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+    console.log('User tapped notification:', response);
+  });
 
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
-  }, []);
+  return () => {
+    Notifications.removeNotificationSubscription(notificationListener);
+    Notifications.removeNotificationSubscription(responseListener);
+  };
+}, []);
 
   
   return (

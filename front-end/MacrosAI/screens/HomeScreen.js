@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Alert, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,28 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 export default function HomeScreen({ navigation }) {
   const { user } = useUser();
   const [likedMeals, setLikedMeals] = useState([]);
+
+//   useEffect(() => {
+//   const fetchMealBatch = async () => {
+//     try {
+//       const res = await fetch('http://0.0.0.0:8000/get-meal-batch', {
+//         method: 'GET',
+//         headers: { 'Content-Type': 'application/json' },
+//       });
+//       const json = await res.json();
+//       console.log('get-meal-batch response:', json);
+
+//       // optional: if backend returns recipes and you want to replace local recipes
+//       // if (res.ok && Array.isArray(json.recipes) && json.recipes.length) {
+//       //   setRecipes(json.recipes);
+//       // }
+//     } catch (err) {
+//       console.error('Error fetching meal batch:', err);
+//     }
+//   };
+
+//   fetchMealBatch();
+// }, []);
 
   const [recipes, setRecipes] = useState([
     { id: '1', name: 'Spaghetti Bolognese', image: "https://www.favfamilyrecipes.com/wp-content/uploads/2025/02/Nicks-Authentic-Italian-Spaghetti-twisting.jpg" },
@@ -57,19 +79,6 @@ export default function HomeScreen({ navigation }) {
     });
     Alert.alert('Saved', `${meal.name} added to liked meals`);
   };
-
-  const triggerLocalNotification = async () => {
-  console.log("notification request made.");
-  
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "Test Notification",
-      body: 'This is a test notification from your app',
-      data: { screen: 'Home' },
-    },
-    trigger: { seconds: 5 }, 
-  });
-};
 
   const handleDone = () => {
     if (selectedMeals.length === 0) {

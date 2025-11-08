@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import * as Notifications from 'expo-notifications';
 import {
   View,
   Text,
@@ -62,6 +63,23 @@ export default function OrderSummaryScreen({ navigation, route }) {
     { id: 'p9', name: 'Greek Yogurt (500g)', category: 'Dairy' },
     { id: 'p10', name: 'Milk (1 L)', category: 'Dairy' },
   ];
+
+  const triggerNotification = async () => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Test Notification",
+          body: "This is a local notification!",
+          sound: "default",
+          data: { screen: "Home" },
+        },
+        trigger: { seconds: 2 },
+      });
+      console.log("Notification scheduled");
+    } catch (e) {
+      console.error("Error scheduling notification:", e);
+    }
+  };
 
   // Filter suggested products based on search query
   const filteredProducts = useMemo(
@@ -146,6 +164,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
           onPress={() => {
             Alert.alert('Order Confirmed!');
             clearMeals();
+            triggerNotification();
             navigation.goBack();
           }}
         >
