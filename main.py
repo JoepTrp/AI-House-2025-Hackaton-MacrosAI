@@ -34,8 +34,8 @@ app.add_middleware(
 
 # --------------------------- onboarding models ----------------
 class Goal(str, Enum):
-    lose_weight = "lose weight"
-    gain_muscle = "gain muscle"
+    lose_weight = "lose_weight"
+    gain_muscle = "gain_muscle"
     maintain = "maintain"
 
 class ActivityLevel(str, Enum):
@@ -98,7 +98,7 @@ async def handle_onboarding(data: OnboardingData):
         goals=user_goals
     )
     
-    print(f"New profile saved: {json.dumps(CURRENT_USER_CONTEXT, indent=2)}")
+    print(f"New profile saved: {CURRENT_USER_CONTEXT.model_dump_json(indent=2)}")
     return {"success"}
 
 @app.post("/get-meal-batch")
