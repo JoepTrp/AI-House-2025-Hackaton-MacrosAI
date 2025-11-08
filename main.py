@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
 
-# --- 1. SETUP & CONFIG ---
+# config
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
 client = OpenAI(
@@ -25,20 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# This is our hardcoded list of items users probably have.
-# We use lowercase for easy matching.
-COMMON_PANTRY_STAPLES = {
-    "salt", "pepper", "black pepper", "olive oil", "extra virgin olive oil",
-    "vegetable oil", "canola oil", "sugar", "flour", "all-purpose flour",
-    "butter", "garlic powder", "onion powder", "paprika", "chili powder",
-    "soy sauce", "vinegar", "balsamic vinegar", "apple cider vinegar"
-}
-
-# --- 2. HACKATHON "DATABASE" ---
-
+# init global variables
 CURRENT_USER_PROFILE: Dict[str, Any] = {}
 SHOPPING_LIST: List[Dict[str, Any]] = []
 
+# forged database
 try:
     with open("mock_data.json") as f:
         MOCK_DATA = json.load(f)
@@ -47,10 +38,7 @@ except FileNotFoundError:
     MOCK_DATA = []
     print("WARNING: 'mock_data.json' not found.")
 
-
-# --- 3. DATA VALIDATION MODELS (PYDANTIC) ---
-
-# --- Onboarding Models ---
+# onboarding models
 class Goal(str, Enum):
     lose_weight = "lose_weight"
     gain_muscle = "gain_muscle"
@@ -70,7 +58,7 @@ class OnboardingData(BaseModel):
     goal: Goal
     activity_level: ActivityLevel
 
-# --- Shopping List Models ---
+# shopping list models
 class Ingredient(BaseModel):
     item_name: str
     quantity: str
@@ -78,11 +66,8 @@ class Ingredient(BaseModel):
 class AddToListRequest(BaseModel):
     ingredients: List[Ingredient] = Field(..., example=[{"item_name": "Organic Chicken Breast", "quantity": "2 lbs"}])
 
-
-# --- 4. NUTRITIONAL ENGINE (Unchanged) ---
-
+# calculate macros
 def calculate_targets(data: OnboardingData) -> Dict[str, int]:
-    # (Same as before: calculates BMR, TDEE, macros)
     bmr = (10 * data.weight) + (6.25 * data.height) - (5 * data.age) + 5
     activity_multipliers = {
         "sedentary": 1.2, "light": 1.375, "moderate": 1.55, "active": 1.725
@@ -101,8 +86,9 @@ def calculate_targets(data: OnboardingData) -> Dict[str, int]:
     }
 
 
-# --- 5. API ENDPOINTS ---
+# --------------------------- actual endpoints -----------------
 
+# initialize user profile
 @app.post("/onboarding")
 async def handle_onboarding(data: OnboardingData):
     """
@@ -110,14 +96,14 @@ async def handle_onboarding(data: OnboardingData):
     """
     global CURRENT_USER_PROFILE, SHOPPING_LIST
     
-    # Reset for the demo
     SHOPPING_LIST = []
     
     targets = calculate_targets(data)
     CURRENT_USER_PROFILE = data.model_dump()
     CURRENT_USER_PROFILE.update(targets)
     
-    # "Fake" learned trends
+    # user preferences and used pantry items
+    # hardcoded for now but pattern recognition later to add to this list
     CURRENT_USER_PROFILE["preferences"] = [
         "Prefers almond milk over dairy milk.",
         "Loves avocados.",
@@ -131,15 +117,10 @@ async def handle_onboarding(data: OnboardingData):
     print(f"New profile saved: {json.dumps(CURRENT_USER_PROFILE, indent=2)}")
     return {"message": f"Welcome, {data.name}!", "targets": targets}
 
-# ---
-# ENDPOINT 2: THE MEAL SWIPER (*** MODIFIED ***)
-# ---
+# generate batches of 5 meals 
+# filter items in 'to buy' and 'you have'
 @app.post("/get-meal-batch")
 async def get_meal_batch():
-    """
-    **AI ENDPOINT 1:** Generates a batch of 5 meal-swipe cards.
-    Filters ingredients into "to buy" and "you have" lists.
-    """
     if not CURRENT_USER_PROFILE:
         return {"error": "User profile not set. Please complete onboarding first."}
 
@@ -165,11 +146,6 @@ async def get_meal_batch():
         {{
           "meal_name": "Example: High-Protein Chicken Salad",
           "description": "A short, enticing description.",
-          "recipe_steps": [
-            "1. Chop chicken.",
-            "2. Mix with avocado.",
-            "3. Serve."
-          ],
           "ingredients": [
             {{"item_name": "Organic Chicken Breast", "quantity": "100g"}},
             {{"item_name": "Avocado", "quantity": "1 whole"}},
@@ -184,8 +160,8 @@ async def get_meal_batch():
     """
 
     try:
-        completion = client.chat.comD.create(
-            model="gpt-4o", 
+        completion = client.chat.completions.create(
+            model="gpt-5-nano",
             messages=[{"role": "system", "content": system_prompt}],
             response_format={"type": "json_object"} 
         )
@@ -193,14 +169,14 @@ async def get_meal_batch():
         response_text = completion.choices[0].message.content
         json_response = json.loads(response_text)
         
-        # 1. Get the user's "running low" list
+        # get the user's "running low" list
         running_low_items = {
             item['item_name'].lower()
             for item in CURRENT_USER_PROFILE.get("pantry_items", [])
             if item['last_purchased_days_ago'] >= (item['purchase_frequency_weeks'] * 7) - 3 # (e.g., 13 days is >= 14-3)
         }
         
-        # 2. Process each meal from the AI
+        # process each meal from the AI
         for meal in json_response.get("meals", []):
             ingredients_to_buy = []
             ingredients_you_have = []
@@ -229,42 +205,15 @@ async def get_meal_batch():
             if "ingredients" in meal:
                 del meal["ingredients"]
                 
-        # Send the modified, smarter JSON to the frontend
         return json_response
 
     except Exception as e:
         print(f"AI/JSON Error: {e}")
         return {"error": f"Failed to generate meals: {e}"}
 
-# ---
-# ENDPOINT 3: THE SHOPPING LIST
-# ---
-@app.post("/add-to-list")
-async def add_to_list(request: AddToListRequest):
-    """
-    **NON-AI ENDPOINT:** Adds ingredients from a "swipe right"
-    to the global shopping list.
-    """
-    global SHOPPING_LIST
-    
-    for ingredient in request.ingredients:
-        # Simple add for the demo. A real app would check for duplicates.
-        SHOPPING_LIST.append(ingredient.model_dump())
-    
-    print(f"Updated Shopping List: {SHOPPING_LIST}")
-    
-    # Return the complete new list
-    return {"shopping_list": SHOPPING_LIST}
-
-# ---
-# ENDPOINT 4: THE PANTRY CHECK
-# ---
+# last check for regular pantry suggestions
 @app.post("/check-pantry")
 async def check_pantry():
-    """
-    **AI ENDPOINT 2:** Checks user's pantry trends and suggests
-    items to re-order, formatted as JSON.
-    """
     if not CURRENT_USER_PROFILE:
         return {"error": "User profile not set."}
 
@@ -314,7 +263,7 @@ async def check_pantry():
         print(f"AI/JSON Error: {e}")
         return {"error": f"Failed to check pantry: {e}"}
 
-# --- 6. RUN THE APP ---
+# main
 if __name__ == "__main__":
     print("--- Starting Smart Meal Swiper Backend ---")
     print("Running on http://0.0.0.0:8000")
