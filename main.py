@@ -155,11 +155,6 @@ async def get_meal_batch():
         {{
           "meal_name": "Example: High-Protein Chicken Salad",
           "description": "A short, enticing description.",
-          "recipe_steps": [
-            "1. Chop chicken.",
-            "2. Mix with avocado.",
-            "3. Serve."
-          ],
           "ingredients": [
             {{"item_name": "Organic Chicken Breast", "quantity": "100g"}},
             {{"item_name": "Avocado", "quantity": "1 whole"}},
@@ -226,6 +221,7 @@ async def get_meal_batch():
         return {"error": f"Failed to generate meals: {e}"}
 
 # when user swiped right, add the ingedients to the list
+# TODO this is stored locally so we dont need this
 @app.post("/add-to-list")
 async def add_to_list(request: AddToListRequest):
     global SHOPPING_LIST
