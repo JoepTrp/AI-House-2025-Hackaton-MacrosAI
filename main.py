@@ -33,6 +33,7 @@ app.add_middleware(
 )
 
 # --------------------------- onboarding models ----------------
+# --------------------------- onboarding models ----------------
 class Goal(str, Enum):
     lose_weight = "lose_weight"
     gain_muscle = "gain_muscle"

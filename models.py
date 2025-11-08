@@ -1,7 +1,11 @@
+<<<<<<< HEAD
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 from typing import List, Dict, Optional
+=======
+from pydantic import BaseModel
+>>>>>>> backend
 
 class Macros(BaseModel):
     calories: int
@@ -27,6 +31,7 @@ class Suggestion(BaseModel):
     reason: str
 
 class Suggestions(BaseModel):
+<<<<<<< HEAD
     suggestions: list[Suggestion]
 
 
@@ -67,3 +72,6 @@ class RecipeSelectionContext(BaseModel):
     preference_vector_tags: Optional[List[float]] = None
     purchase_history: List[PurchaseRecord] = Field(default_factory=list) # PurchaseRecord must also be in models.py
     purchase_patterns: Dict[str, float] = Field(default_factory=dict) # e.g., {"milk": 7.3}
+=======
+    suggestions: list[Suggestion]
+>>>>>>> backend
