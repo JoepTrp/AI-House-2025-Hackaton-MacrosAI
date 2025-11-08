@@ -25,9 +25,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# This is our hardcoded list of items users probably have.
+# We use lowercase for easy matching.
+COMMON_PANTRY_STAPLES = {
+    "salt", "pepper", "black pepper", "olive oil", "extra virgin olive oil",
+    "vegetable oil", "canola oil", "sugar", "flour", "all-purpose flour",
+    "butter", "garlic powder", "onion powder", "paprika", "chili powder",
+    "soy sauce", "vinegar", "balsamic vinegar", "apple cider vinegar"
+}
+
 # --- 2. HACKATHON "DATABASE" ---
 
-# We now need two global variables: one for the user, one for their list.
 CURRENT_USER_PROFILE: Dict[str, Any] = {}
 SHOPPING_LIST: List[Dict[str, Any]] = []
 
@@ -124,23 +132,20 @@ async def handle_onboarding(data: OnboardingData):
     return {"message": f"Welcome, {data.name}!", "targets": targets}
 
 # ---
-# ENDPOINT 2: THE MEAL SWIPER
+# ENDPOINT 2: THE MEAL SWIPER (*** MODIFIED ***)
 # ---
 @app.post("/get-meal-batch")
 async def get_meal_batch():
     """
-    **AI ENDPOINT 1:** Generates a batch of 5 meal-swipe cards,
-    formatted as structured JSON.
+    **AI ENDPOINT 1:** Generates a batch of 5 meal-swipe cards.
+    Filters ingredients into "to buy" and "you have" lists.
     """
     if not CURRENT_USER_PROFILE:
         return {"error": "User profile not set. Please complete onboarding first."}
 
-    # Format all data for the AI
     profile_summary = json.dumps(CURRENT_USER_PROFILE, indent=2)
     available_groceries = json.dumps(MOCK_DATA, indent=2)
 
-    # This prompt is a "hack" to force OpenAI to return JSON.
-    # We tell it the *exact* JSON structure we want.
     system_prompt = f"""
     You are a meal-planning expert. Your goal is to generate 5 meal ideas
     for the user based on their profile.
@@ -167,7 +172,9 @@ async def get_meal_batch():
           ],
           "ingredients": [
             {{"item_name": "Organic Chicken Breast", "quantity": "100g"}},
-            {{"item_name": "Avocado", "quantity": "1 whole"}}
+            {{"item_name": "Avocado", "quantity": "1 whole"}},
+            {{"item_name": "Extra Virgin Olive Oil", "quantity": "1 tbsp"}},
+            {{"item_name": "Salt", "quantity": "1 pinch"}}
           ]
         }}
       ]
@@ -177,18 +184,52 @@ async def get_meal_batch():
     """
 
     try:
-        completion = client.chat.completions.create(
+        completion = client.chat.comD.create(
             model="gpt-4o", 
             messages=[{"role": "system", "content": system_prompt}],
-            # This 'json_object' mode helps, but the prompt is what really works
             response_format={"type": "json_object"} 
         )
         
         response_text = completion.choices[0].message.content
-        # Parse the JSON string from the AI into a real Python object
         json_response = json.loads(response_text)
         
-        # Send the clean JSON object to the frontend
+        # 1. Get the user's "running low" list
+        running_low_items = {
+            item['item_name'].lower()
+            for item in CURRENT_USER_PROFILE.get("pantry_items", [])
+            if item['last_purchased_days_ago'] >= (item['purchase_frequency_weeks'] * 7) - 3 # (e.g., 13 days is >= 14-3)
+        }
+        
+        # 2. Process each meal from the AI
+        for meal in json_response.get("meals", []):
+            ingredients_to_buy = []
+            ingredients_you_have = []
+            
+            original_ingredients = meal.get("ingredients", [])
+            
+            for ing in original_ingredients:
+                item_name_lower = ing.get("item_name", "").lower()
+                
+                # Logic:
+                # 1. Is it on the "running low" list?
+                if item_name_lower in running_low_items:
+                    ingredients_to_buy.append(ing)
+                # 2. Is it a common staple (and not running low)?
+                elif item_name_lower in COMMON_PANTRY_STAPLES:
+                    ingredients_you_have.append(ing)
+                # 3. Otherwise, it's a regular item to buy.
+                else:
+                    ingredients_to_buy.append(ing)
+            
+            # 3. Add our new, smart lists to the meal object
+            meal["ingredients_to_buy"] = ingredients_to_buy
+            meal["ingredients_you_have"] = ingredients_you_have
+            
+            # 4. Remove the original messy list
+            if "ingredients" in meal:
+                del meal["ingredients"]
+                
+        # Send the modified, smarter JSON to the frontend
         return json_response
 
     except Exception as e:
@@ -260,7 +301,7 @@ async def check_pantry():
     
     try:
         completion = client.chat.completions.create(
-            model="gpt-5-nano", 
+            model="gpt-5-nano",
             messages=[{"role": "system", "content": system_prompt}],
             response_format={"type": "json_object"}
         )
