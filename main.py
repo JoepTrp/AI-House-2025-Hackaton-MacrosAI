@@ -25,15 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# pantries to check for
-# hardcoded for now but pattern recognition later to add to this list
-COMMON_PANTRY_STAPLES = {
-    "salt", "pepper", "black pepper", "olive oil", "extra virgin olive oil",
-    "vegetable oil", "canola oil", "sugar", "flour", "all-purpose flour",
-    "butter", "garlic powder", "onion powder", "paprika", "chili powder",
-    "soy sauce", "vinegar", "balsamic vinegar", "apple cider vinegar"
-}
-
 # init global variables
 CURRENT_USER_PROFILE: Dict[str, Any] = {}
 SHOPPING_LIST: List[Dict[str, Any]] = []
@@ -219,19 +210,6 @@ async def get_meal_batch():
     except Exception as e:
         print(f"AI/JSON Error: {e}")
         return {"error": f"Failed to generate meals: {e}"}
-
-# when user swiped right, add the ingedients to the list
-# TODO this is stored locally so we dont need this
-@app.post("/add-to-list")
-async def add_to_list(request: AddToListRequest):
-    global SHOPPING_LIST
-    
-    for ingredient in request.ingredients:
-        SHOPPING_LIST.append(ingredient.model_dump())
-    
-    print(f"Updated Shopping List: {SHOPPING_LIST}")
-    
-    return {"shopping_list": SHOPPING_LIST}
 
 # last check for regular pantry suggestions
 @app.post("/check-pantry")
