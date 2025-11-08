@@ -215,7 +215,7 @@ async def handle_chat(request: ChatRequest):
     try:
         completion = client.chat.completions.create(
             # Using gpt-4o for best reasoning, but gpt-3.5-turbo is faster/cheaper
-            model="gpt-4o", 
+            model="gpt-5-nano", 
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
