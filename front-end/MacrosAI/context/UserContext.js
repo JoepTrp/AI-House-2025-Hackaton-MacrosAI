@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext } from 'react';
 
 // Create Context
 const UserContext = createContext();
+const BASE = 'http://0.0.0.0:8000';
 
 // Hook for easy access
 export const useUser = () => useContext(UserContext);
@@ -26,11 +27,35 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const register = (email, password, username, { gender, age, weight, activityLevel, goal } ) => {
-    //TODO: CALL API HERE
-    if (email && password) {
-      // keep user null intentionally
-      setUser(username);
+  const register = async ({ email, password, username, gender, age, weight, activityLevel, goal, height }) => {
+    console.log('UserContext.register called with', { email, username, gender, age, weight, activityLevel, goal, height });
+
+    try {
+      const res = await fetch(`${BASE}/onboarding`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: username,
+          age,
+          weight,
+          activity_level: activityLevel,
+          goal,
+          height,
+          email, // include if backend uses it
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        console.warn('Register failed', json);
+        return { success: false, error: json };
+      }
+
+      setUser(json.user ?? { email: json.email ?? email, username: username ?? json.username });
+      return { success: true, data: json };
+    } catch (err) {
+      console.error('Register error', err);
+      return { success: false, error: err };
     }
   };
 

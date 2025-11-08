@@ -9,6 +9,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function HomeScreen({ navigation }) {
   const { user } = useUser();
+  const [likedMeals, setLikedMeals] = useState([]);
 
   const [recipes, setRecipes] = useState([
     { id: '1', name: 'Spaghetti Bolognese', image: "https://www.favfamilyrecipes.com/wp-content/uploads/2025/02/Nicks-Authentic-Italian-Spaghetti-twisting.jpg" },
@@ -48,13 +49,38 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const handleSwipeUp = (cardIndex) => {
+    const meal = recipes[cardIndex];// avoid duplicates
+    setLikedMeals((prev) => {
+     if (prev.find((m) => m.id === meal.id)) return prev;
+      return [...prev, meal];
+    });
+    Alert.alert('Saved', `${meal.name} added to liked meals`);
+  };
+
+  const triggerLocalNotification = async () => {
+  console.log("notification request made.");
+  
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Test Notification",
+      body: 'This is a test notification from your app',
+      data: { screen: 'Home' },
+    },
+    trigger: { seconds: 5 }, 
+  });
+};
+
   const handleDone = () => {
     if (selectedMeals.length === 0) {
       Alert.alert('No meals selected', 'Please select some meals first.');
+      triggerLocalNotification();
       return;
     }
     navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, clearMeals: () => setSelectedMeals([])});
   };
+
+  
 
   return (
     <View style={styles.container}>
@@ -74,13 +100,16 @@ export default function HomeScreen({ navigation }) {
           cards={recipes}
           stackSize={3}
           cardIndex={0}
-          verticalSwipe={false}
+          verticalSwipe={true}
           onSwiping={(x) => swipeX.setValue(x)}
           onSwipedRight={(cardIndex) => {
             handleSwipeRight(cardIndex);
             swipeX.setValue(0); 
           }}
           onSwipedLeft={() => swipeX.setValue(0)} 
+          onSwipedTop={(cardIndex) => {
+            handleSwipeUp(cardIndex);
+            swipeX.setValue(0); }}
           backgroundColor="transparent"
           animateCardOpacity
           cardHorizontalMargin={0}
@@ -144,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     alignSelf: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     alignSelf: "center",
     marginRight:35,
   },
@@ -165,7 +194,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0,
     overflow: 'hidden'
     },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20, zIndex:10 },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20, zIndex:10, paddingBottom:50 },
   doneButton: {
     backgroundColor: '#FF6B00',
     padding: 16,

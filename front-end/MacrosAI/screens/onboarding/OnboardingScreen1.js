@@ -15,10 +15,23 @@ export default function OnboardingScreenOne({ navigation }) {
   const [weight, setWeight] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
   const [goal, setGoal] = useState('');
+  const [height, setHeight] = useState('');
 
-  const handleRegister = () => {
-    // Pass all the info to your register function
-    register(email, password, username, { gender, age, weight, activityLevel, goal });
+  const handleRegister = async () => {
+    const payload = {
+      email,
+      password,
+      username,
+      gender,
+      age: Number(age),
+      height: Number(height),
+      weight: Number(weight),
+      goal: goal ? goal.toLowerCase() : undefined,
+      activityLevel: activityLevel ? activityLevel.toLowerCase() : undefined,
+    };
+    console.log('register payload', payload);
+    const result = await register(payload);
+    console.log('register result', result);
   };
 
   const renderOptionButtons = (options, selected, setSelected) => {
@@ -81,11 +94,19 @@ export default function OnboardingScreenOne({ navigation }) {
         value={age}
         keyboardType="numeric"
       />
+      
       <TextInput
         placeholder="Weight (kg)"
         style={styles.input}
         onChangeText={setWeight}
         value={weight}
+        keyboardType="numeric"
+      />
+      <TextInput
+        placeholder="Height (cm)"
+        style={styles.input}
+        onChangeText={setHeight}
+        value={height}
         keyboardType="numeric"
       />
 
