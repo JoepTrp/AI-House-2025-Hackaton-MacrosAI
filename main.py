@@ -8,6 +8,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
+# conda install -c conda-forge fastapi uvicorn python-dotenv
+# pip install openai
 
 # config
 load_dotenv()
