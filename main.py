@@ -42,8 +42,8 @@ except FileNotFoundError:
 
 # onboarding models
 class Goal(str, Enum):
-    lose_weight = "lose_weight"
-    gain_muscle = "gain_muscle"
+    lose_weight = "lose weight"
+    gain_muscle = "gain muscle"
     maintain = "maintain"
 
 class ActivityLevel(str, Enum):
