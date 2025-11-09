@@ -192,25 +192,15 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
     using OpenAI web_search and structured parsing.
     """
 
-    # Collect allowed domains from the recipe URLs
-    allowed_domains = [
-        urlparse(recipe.url).netloc for recipe in selected_recipes
-    ]
-
     # Build a simple textual instruction
-    recipe_text = "\n".join([f"- {r.title}: {r.url}" for r in selected_recipes])
+    recipe_text = "\n".join([f"- {r.title}: {r.ingredients_per_portion}" for r in selected_recipes])
     prompt = f"""
-    You are an expert nutritionist, with an affinity for mathematics and psychology.
     You are building a grocery list for a person who has the following daily macro requirements:
     Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
     Fat: {context.macros.fat}g, Carbs: {context.macros.carbs}g.
-    The user has selected some recipes to cook for next week.
-    Visit each of the following recipe URLs, extract their ingredient lists,
-    and return a combined grocery list in JSON format with item name, quantity, and estimated price.
-    You should estimate a reasonable number of servings so that the diet is varied and balanced, for one week.
-    Merge duplicates (e.g., multiple 'sugar' entries should be combined).
-    Use metric units where possible (Liters L for liquids, grams g for solid foods)
-
+    The user has selected some recipes to cook for next week. You may find the ingredients per portion for each of the recipes.
+    Compose a grocery list, which allows the user to cook a couple portions of the selected recipes, in a balanced way.
+    If very similar ingredients appear in multiple lists, only include one of that ingredient type in the final grocery list, adding the quantities and multiplying by serving size.
     Recipes:
     {recipe_text}
     """
@@ -218,19 +208,15 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
     # Call the Responses API with web_search restricted to the recipe URLs
     response = client.responses.parse(
         model="gpt-5",
-        tools=[
-            {
-                "type": "web_search",
-                "filters": {
-                    "allowed_domains": allowed_domains
+        input=[{"role": "system", "content": "You are an James Oliver, an expert nutritionist, with an affinity for mathematics and psychology."},
+                {
+                "role": "user",
+                "content": prompt,
                 },
-            }
-        ],
-        tool_choice="auto",
-        include=["web_search_call.action.sources"],
-        input=prompt,
+            ],
         text_format=GroceryList,
     )
+    return response.output_parsed
 
 
 # -----------------------
