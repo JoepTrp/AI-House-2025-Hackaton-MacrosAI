@@ -139,7 +139,7 @@ async def get_meal_batch():
         return {"error": "Failed to generate recipes."}
     
 @app.post("/get-grocery-items")
-async def grocery_list(selected_recipes: list[models.RecipeLink]):
+async def grocery_list(selected_recipes: models.Links):
     return compute_grocery_items(CURRENT_USER_CONTEXT, selected_recipes)
 
 # log purchased items to track and update patterns
