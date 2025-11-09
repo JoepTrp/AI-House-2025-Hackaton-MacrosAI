@@ -31,4 +31,8 @@ The user should be able to communicate to the agent that they want a food delive
 The agent should be equipped with more tools to infer user preferences
 - Periodically, the agent should check the stored context vectors for the user and notify based on threshold values.
 - These could be temporal (the user typically orders takeout on Fridays => prompt the user with a notification on Friday) or simply based on common behavior at different points in the app (if the user adds certain items to the grocery list frequently, automatically suggest them)
-- If usage activity dips, provide incentives via notifications (include a scan for sales by different food provi
+- If usage activity dips, provide incentives via notifications (include a scan for sales by different food providers
+### Front end 
+The front end was tested on iOS simulator with xcode and it was tested with expo. 
+It can be run using command: npm run ios or npm run android (we did not manage to test is for android).
+There is also a possibility to download the Expo Go app and run in the terminal npx expo  --tunnel. Then if two devices are connected to the same wifi the mobile app should be visible inside Expo Go App. Alternatively, the user can scan the QR code presented by the terminal.
