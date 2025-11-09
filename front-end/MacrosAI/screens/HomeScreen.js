@@ -141,7 +141,7 @@ export default function HomeScreen({ navigation }) {
       Alert.alert('No meals selected', 'Please select some meals first.');
       return;
     }
-    navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, obtainedCards, clearMeals: () => setSelectedMeals([]), clearIngredients: () => setIngredientsMap({})});
+    navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, setIngredientsMap, obtainedCards, clearMeals: () => setSelectedMeals([]), clearIngredients: () => setIngredientsMap({})});
   };
 
   if (recipes.length === 0) {

@@ -13,7 +13,7 @@ import {
 import { useUser } from '../context/UserContext';
 
 export default function OrderSummaryScreen({ navigation, route }) {
-  const { selectedMeals, ingredientsMap, obtainedCards, clearMeals, clearIngredients } = route.params;
+  const { selectedMeals, ingredientsMap, setIngredientsMap, obtainedCards, clearMeals, clearIngredients } = route.params;
   const {orders, setOrders} = useUser()
   const [isLoading, setIsLoading] = useState(false);
   // Count ingredients
