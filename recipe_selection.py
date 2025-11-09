@@ -62,9 +62,6 @@ def summarize_preferences(context: RecipeSelectionContext) -> str:
     return f"User tends to enjoy recipes with themes like {', '.join(set(title_prefs + tag_prefs))}."
 
 
-# -----------------------
-# STEP 1: Recipe Idea Generation
-# -----------------------
 
 def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> Ideas | None:
     """Use OpenAI model to generate structured recipe ideas given user macros and goals"""
@@ -203,12 +200,11 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: Lin
     Recipes:
     {recipe_text}
     """
-    print(prompt)
 
     # Call the Responses API with web_search restricted to the recipe URLs
     response = client.responses.parse(
         model="gpt-4.1-mini",
-        input=[{"role": "system", "content": "You are  James Oliver, an expert nutritionist, with an affinity for mathematics and psychology."},
+        input=[{"role": "system", "content": "You are James Oliver, an expert nutritionist, with an affinity for mathematics and psychology."},
                 {
                 "role": "user",
                 "content": prompt,
