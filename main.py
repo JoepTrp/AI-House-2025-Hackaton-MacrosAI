@@ -40,8 +40,8 @@ app.add_middleware(
 
 # --------------------------- onboarding models ----------------
 class Goal(str, Enum):
-    lose_weight = "lose weight"
-    gain_muscle = "gain muscle"
+    lose_weight = "lose_weight"
+    gain_muscle = "gain_muscle"
     maintain = "maintain"
 
 class ActivityLevel(str, Enum):
@@ -136,11 +136,11 @@ async def get_meal_batch():
     try:
         ideas = generate_recipe_ideas(context, 5)
         print(ideas.ideas)
-        nested_links_list = find_recipe_links(ideas.ideas)
-        flat_links_list = [link for sublist in nested_links_list for link in sublist]
+        # find_recipe_links returns a flat list, so we can use it directly
+        recipe_links = find_recipe_links(ideas.ideas) 
         print("recipies received.")
 
-        return {"links": flat_links_list, "ideas": ideas.ideas}
+        return {"links": recipe_links, "ideas": ideas.ideas} # <-- PASS IT DIRECTLY
         
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")

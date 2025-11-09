@@ -9,6 +9,10 @@ import * as Notifications from 'expo-notifications'
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
+// HomeScreen.js - top of component
+  const [isOrdering, setIsOrdering] = useState(false); // Add this
+  const [selectedMeals, setSelectedMeals] = useState([]);
+
 export default function HomeScreen({ navigation }) {
   const { user } = useUser();
   const [likedMeals, setLikedMeals] = useState([]);
@@ -67,15 +71,18 @@ export default function HomeScreen({ navigation }) {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
+// HomeScreen.js - inside fetchMealBatch
       const json = await res.json();
       console.log('Returned from backend', json);
       const ideas = Array.isArray(json.ideas) ? json.ideas : [];
-      const linkChunks = chunkArray(json.links, 4); 
-      const parsedLinks = linkChunks.map(chunk => Object.fromEntries(chunk));
+      // json.links is now the clean array of recipe objects
+      const parsedLinks = Array.isArray(json.links) ? json.links : []; 
       console.log(parsedLinks);
-      setObtainedCards(prev => [...prev, ...parsedLinks]);
+      setObtainedCards(prev => [...prev, ...parsedLinks]); // Store the full objects
+      
       const newRecipes = ideas.map((idea, i) => {
-        const link = parsedLinks[i];
+        const link = parsedLinks[i]; // link is now the full RecipeLink object
+        if (!link) return null; // Safety check
 
         return {
           id: `${Date.now()}-${i}`,
@@ -136,36 +143,66 @@ export default function HomeScreen({ navigation }) {
     Alert.alert('Saved', `${meal.name} added to liked meals`);
   };
 
-  const handleDone = () => {
+// HomeScreen.js - replace the old handleDone function
+  const handleDone = async () => {
     if (selectedMeals.length === 0) {
       Alert.alert('No meals selected', 'Please select some meals first.');
       return;
     }
-    navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, obtainedCards, clearMeals: () => setSelectedMeals([]), clearIngredients: () => setIngredientsMap({})});
-  };
+    if (isOrdering) return; // Prevent double-taps
 
-  if (recipes.length === 0) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        {isLoading ? (
-          <>
-            <ActivityIndicator size="large" color="#FF6B00" />
-            <Text style={{ marginTop: 12 }}>Loading recipes…</Text>
-          </>
-        ) : (
-          <>
-            <Text style={{ marginBottom: 12 }}>No recipes loaded.</Text>
-            <TouchableOpacity
-              style={{ backgroundColor: '#FF6B00', padding: 12, borderRadius: 8 }}
-              onPress={() => fetchMealBatch()}
-            >
-              <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    );
-  }
+    setIsOrdering(true);
+
+    try {
+      // Find the full RecipeLink objects that correspond to the simplified selectedMeals
+      const selectedFullLinks = selectedMeals.map(selectedMeal => {
+        // Find the index of this meal in the 'recipes' array to find its full data
+        const index = recipes.findIndex(r => r.id === selectedMeal.id);
+        if (index > -1) {
+          return obtainedCards[index]; // Return the full data object from obtainedCards
+        }
+        return null;
+      }).filter(Boolean); // Filter out any nulls
+
+      // This is the payload your endpoint expects: { "links": [...] }
+      const payload = {
+        links: selectedFullLinks
+      };
+
+      console.log("Calling /get-grocery-items with:", JSON.stringify(payload));
+
+      // Call the API
+      const res = await fetch('http://0.0.0.0:8000/get-grocery-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to get grocery list from backend.');
+      }
+
+      const groceryList = await res.json();
+      console.log('Got grocery list:', groceryList);
+
+      // Now navigate to the OrderSummary screen, passing the AI-generated list
+      navigation.navigate("OrderSummary", {
+        // Pass the new groceryList. Your OrderSummary screen will need to be
+        // updated to display this data instead of selectedMeals/ingredientsMap
+        groceryList: groceryList, 
+        
+        // Pass these for continuity, though OrderSummary may not need them now
+        selectedMeals: selectedMeals, 
+        clearMeals: () => setSelectedMeals([]),
+      });
+
+    } catch (err) {
+      console.error('Error during ordering:', err);
+      Alert.alert('Order Failed', err.message || 'Could not connect to the server.');
+    } finally {
+      setIsOrdering(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -173,8 +210,16 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.title}>Welcome back!</Text>
 
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
-          <Ionicons name="cart-outline" size={24} color="#333" />
+        <TouchableOpacity 
+          style={[styles.doneButton, isOrdering && styles.disabledButton]} 
+          onPress={handleDone}
+          disabled={isOrdering}
+        >
+          {isOrdering ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Order</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -285,6 +330,12 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginRight:35,
   },
+  // HomeScreen.js - in StyleSheet.create
+  doneButton: { ... },
+  disabledButton: {
+    backgroundColor: '#FFB073', // A lighter/faded color
+  },
+  editButton: { ... },
   cardImage: { width: '100%', height: 200, borderRadius: 10, marginBottom: 15 },
   cardTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 5, textAlign: 'left' },
   cardIngredients: { fontSize: 16, color: '#555', marginBottom:10},
