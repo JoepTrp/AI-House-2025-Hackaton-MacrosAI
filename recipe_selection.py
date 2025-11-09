@@ -207,9 +207,11 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: Lin
     {recipe_text}
     """
 
+    print(prompt)
+
     # Call the Responses API with web_search restricted to the recipe URLs
     response = client.responses.parse(
-        model="gpt-5",
+        model="gpt-4.1-mini",
         input=[{"role": "system", "content": "You are an James Oliver, an expert nutritionist, with an affinity for mathematics and psychology."},
                 {
                 "role": "user",
