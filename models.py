@@ -11,7 +11,7 @@ class Macros(BaseModel):
 
 class GroceryItem(BaseModel):
     name: str
-    quantity: str # 1L, 500g, etc.
+    quantity: str
 
 class GroceryList(BaseModel):
     items: list[GroceryItem]
@@ -61,14 +61,14 @@ class RecipeLink(BaseModel):
 class RecipeSelectionContext(BaseModel):
     user_id: str
     macros: Macros
-    goals: Dict[str, str]  # e.g. {"goal": "lose_weight", "diet": "keto"}
+    goals: Dict[str, str]
     liked_recipes: List[RecipeLink] = Field(default_factory=list)
     disliked_recipes: List[RecipeLink] = Field(default_factory=list)
     maybe_later_recipes: List[RecipeLink] = Field(default_factory=list)
     preference_vector_title: Optional[List[float]] = None
     preference_vector_tags: Optional[List[float]] = None
-    purchase_history: List[PurchaseRecord] = Field(default_factory=list) # PurchaseRecord must also be in models.py
-    purchase_patterns: Dict[str, float] = Field(default_factory=dict) # e.g., {"milk": 7.3}
+    purchase_history: List[PurchaseRecord] = Field(default_factory=list)
+    purchase_patterns: Dict[str, float] = Field(default_factory=dict)
 
 class Ideas(BaseModel):
     ideas: list[RecipeIdea]
