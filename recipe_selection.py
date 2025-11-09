@@ -9,7 +9,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from models import Macros, GroceryItem, GroceryList, RecipeSelectionContext, RecipeIdea, RecipeLink
-from test import Ideas
+from models import Ideas
 
 # -----------------------
 # STEP 0: Define Models

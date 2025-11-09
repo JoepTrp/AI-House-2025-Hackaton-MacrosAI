@@ -69,3 +69,6 @@ class RecipeSelectionContext(BaseModel):
     preference_vector_tags: Optional[List[float]] = None
     purchase_history: List[PurchaseRecord] = Field(default_factory=list) # PurchaseRecord must also be in models.py
     purchase_patterns: Dict[str, float] = Field(default_factory=dict) # e.g., {"milk": 7.3}
+
+class Ideas(BaseModel):
+    ideas: list[RecipeIdea]
