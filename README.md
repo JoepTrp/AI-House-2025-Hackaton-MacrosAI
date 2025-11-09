@@ -15,7 +15,7 @@ We still need to connect to real-world supermarkets to make requests for food. T
 
 ### Fine-tuning the Recommender System
 
-The recommender system, which improves the subsequent recipes that the agent suggests, is currently implemented on a conceptual level.
+The recommender system, which improves the subsequent recipes that the agent suggests, is currently implemented on a conceptual level on the backend branch. We ran out of time before properly testing it.
 To actually measure its effects, fine-tune the parameters that influence the learning procedures (alphas for recipe titles and tags), and potentially explore additional feature vectors for this recommendation, we'd need to run further experiments.
 
 ### Extending to Restaurant Deliveries
