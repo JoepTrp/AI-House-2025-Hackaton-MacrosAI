@@ -5,6 +5,8 @@ from pydantic import BaseModel
 
 from main import client
 from models import RecipeSelectionContext
+from recipe_selection import summarize_preferences
+
 
 class DeliverySuggestion(BaseModel):
     restaurant_name: str
@@ -24,12 +26,12 @@ def generate_takeaway_suggestions(context: RecipeSelectionContext, user_location
     """
 
     # Summarize user preferences into natural language, same as before
-    # user_taste_summary = summarize_preferences(context)
+    user_taste_summary = summarize_preferences(context)
 
 
     prompt = f"""
     You are Sarah Brown, a nutrition expert and food recommendation assistant.
-    Suggest {n_suggestions} nearby takeaway dishes for a user in {user_location}.
+    Suggest {n_suggestions} takeaway dishes from nearby restaurants in Amsterdam Zuid.
     The user wants to {context.goals.get('goal')} and typically enjoys: {user_taste_summary}.
     Consider their daily macros:
     - Calories: {context.macros.calories}
@@ -43,7 +45,14 @@ def generate_takeaway_suggestions(context: RecipeSelectionContext, user_location
 
     response = client.responses.parse(
         model="gpt-5",
-        tools=[{"type": "web_search", "external_web_access": True}],
+        tools=[{"type": "web_search",
+                "user_location": {
+            "type": "approximate",
+            "country": "NL",
+            "city": "Amsterdam",
+            "region": "Amsterdam",
+            },
+            "external_web_access": True}],
         tool_choice="auto",
         input=[
             {"role": "user", "content": prompt},

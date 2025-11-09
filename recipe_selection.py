@@ -34,7 +34,7 @@ def summarize_preferences(context: RecipeSelectionContext) -> str:
     """Convert user preference vectors into a natural language summary via embedding similarity."""
 
     if context.preference_vector_title is None:
-        return "No inferred preferences from the user"
+        return ""
 
     # We need a small reference vocabulary of culinary concepts, tags, cuisines, etc.
     reference_tags = [
@@ -58,7 +58,7 @@ def summarize_preferences(context: RecipeSelectionContext) -> str:
     title_prefs = most_similar_concepts(np.array(context.preference_vector_title), reference_tags)
     tag_prefs = most_similar_concepts(np.array(context.preference_vector_tags), reference_tags)
 
-    # Merge and lightly describe
+    # Merge and use to describe
     return f"User tends to enjoy recipes with themes like {', '.join(set(title_prefs + tag_prefs))}."
 
 
@@ -66,12 +66,14 @@ def summarize_preferences(context: RecipeSelectionContext) -> str:
 def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> Ideas | None:
     """Use OpenAI model to generate structured recipe ideas given user macros and goals"""
 
+    preference_data = summarize_preferences(context)
     prompt = f"""
     Think of {n_ideas} creative, healthy recipe ideas for someone who wants to {context.goals.get('goal')}
     with these daily macros:
     Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
     Carbs: {context.macros.carbs}g, Fat: {context.macros.fat}g.
     Each recipe should have a title and about 5 relevant tags (one to two words) describing cuisine type, flavor profile, or key condiments.
+    {preference_data}
     """
     response = client.responses.parse(
         model="gpt-5-nano",
