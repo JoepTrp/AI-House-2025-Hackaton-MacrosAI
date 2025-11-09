@@ -7,37 +7,13 @@ from urllib.parse import urlparse
 import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from models import Macros, GroceryItem, GroceryList
-
+from typing import List, Dict, Optional
+from models import Macros, GroceryItem, GroceryList, RecipeSelectionContext, RecipeIdea, RecipeLink
+from test import Ideas
 
 # -----------------------
 # STEP 0: Define Models
 # -----------------------
-
-class RecipeIdea(BaseModel):
-    recipe_title: str
-    main_ingredients: list[str]
-    tags: list[str]
-
-class Ideas(BaseModel):
-    ideas: list[RecipeIdea]
-
-
-
-class RecipeLink(BaseModel):
-    title: str
-    url: str
-    source: str
-
-
-class RecipeSelectionContext(BaseModel):
-    user_id: str
-    macros: Macros
-    goals: dict[str, str] # e.g. {"goal": "lose_weight", "diet": "keto"}
-    liked_recipes: list[RecipeIdea] = Field(default_factory=list)
-    disliked_recipes: list[RecipeIdea] = Field(default_factory=list)
-    maybe_later_recipes: list[RecipeIdea] = Field(default_factory=list)
-
 
 client = OpenAI(
     api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
@@ -118,16 +94,16 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
 # STEP 2: Find Recipe Links (Web Search)
 # -----------------------
 
-def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
+def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
     """
     Uses OpenAI web_search tool to find recipes biased toward highly rated and widely reviewed recipes.
     """
-    results: list[RecipeLink] = []
+    results: list[list[RecipeLink]] = []
 
     for idea in ideas:
 
         prompt = f"""
-        Find a healthy recipe online for the following recipe idea: "{idea.recipe_title}".
+        Find 1-3 healthy recipes online for the following recipe idea: "{idea.title}".
         Prefer recipes that are:
           - Highly rated (ideally 4 stars or higher)
           - Rated by a large number of users (hundreds or thousands)
@@ -144,7 +120,7 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
                 "content": prompt,
                 },
             ],
-            text_format=RecipeLink,
+            text_format=list[RecipeLink],
         )
 
         results.append(links_associated_with_this_idea.output_parsed)
@@ -256,10 +232,6 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
         text_format=GroceryList,
     )
 
-    # Parse the model output directly into the GroceryList schema
-
-
-    return response.output_parsed
 
 # -----------------------
 # STEP 5: Pipeline Orchestration
