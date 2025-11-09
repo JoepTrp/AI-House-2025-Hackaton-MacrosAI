@@ -71,11 +71,11 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
 
     # Collect allowed domains from the recipe URLs
     allowed_domains = [
-        urlparse(recipe.url).netloc for recipe in selected_recipes
+        urlparse(recipe.url).netloc + urlparse(recipe.url).path for recipe in selected_recipes
     ]
 
     # Build a simple textual instruction
-    recipe_text = "\n".join([f"- {r.title}: {r.url}" for r in selected_recipes])
+    recipe_text = "\n".join([f"- {r.title}" for r in selected_recipes])
     prompt = f"""
     You are an expert nutritionist, with an affinity for mathematics and psychology.
     You are building a grocery list for a person who has the following daily macro requirements:
@@ -94,7 +94,7 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
 
     # Call the Responses API with web_search restricted to the recipe URLs
     response = client.responses.parse(
-        model="gpt-5",
+        model="gpt-5-nano",
         tools=[
             {
                 "type": "web_search",

@@ -12,7 +12,6 @@ class Macros(BaseModel):
 class GroceryItem(BaseModel):
     name: str
     quantity: str # 1L, 500g, etc.
-    price: float
 
 class GroceryList(BaseModel):
     items: list[GroceryItem]
@@ -50,12 +49,12 @@ class Cart(BaseModel):
 
 class RecipeIdea(BaseModel):
     recipe_title: str
-    main_ingredients: List[str]
     tags: List[str]
     estimated_macros: Optional[Macros] = None
 
 class RecipeLink(BaseModel):
     title: str
+    ingredients_per_portion: List[GroceryItem]
     url: str
     source: str
 

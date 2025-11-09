@@ -74,7 +74,7 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
     with these daily macros:
     Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
     Carbs: {context.macros.carbs}g, Fat: {context.macros.fat}g.
-    Each recipe should have a title, description, and about 5 relevant tags describing cuisine type, flavor profile, and key condiments.
+    Each recipe should have a title and about 5 relevant tags (one to two words) describing cuisine type, flavor profile, or key condiments.
     """
     response = client.responses.parse(
         model="gpt-5-nano",
@@ -94,24 +94,24 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
 # STEP 2: Find Recipe Links (Web Search)
 # -----------------------
 
-def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
+def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
     """
     Uses OpenAI web_search tool to find recipes biased toward highly rated and widely reviewed recipes.
     """
-    results: list[list[RecipeLink]] = []
-
+    results: list[RecipeLink] = []
     for idea in ideas:
-
+        print(ideas)
         prompt = f"""
-        Find 1-3 healthy recipes online for the following recipe idea: "{idea.title}".
+        Find healthy recipes online for the following recipe idea: {idea.recipe_title}.
         Prefer recipes that are:
           - Highly rated (ideally 4 stars or higher)
-          - Rated by a large number of users (hundreds or thousands)
+          - Rated by a large number of users (more than 50)
         Only include recipes that are accessible online.
+        Also, retrieve the main grocery items needed (name and quantities) for one portion
         """
 
-        links_associated_with_this_idea = client.responses.parse(
-            model="gpt-5",
+        link_associated_with_this_idea = client.responses.parse(
+            model="gpt-4.1-mini",
             tools=[{"type": "web_search", "external_web_access": True}],
             tool_choice="auto",
             input=[{"role": "system", "content": "Your name is Michael Douglas. You have are a well-experienced home cook, with a critical eye and attention to detail."},
@@ -120,10 +120,10 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
                 "content": prompt,
                 },
             ],
-            text_format=list[RecipeLink],
+            text_format=RecipeLink,
         )
 
-        results.append(links_associated_with_this_idea.output_parsed)
+        results.append(link_associated_with_this_idea.output_parsed)
 
     return results
 
