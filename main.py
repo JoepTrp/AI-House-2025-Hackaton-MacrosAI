@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 
 from recipe_selection import generate_recipe_ideas
 from recipe_selection import find_recipe_links
+from recipe_selection import find_recipe_image
 
 import models
 import smart_reminders
@@ -138,8 +139,14 @@ async def get_meal_batch():
         nested_links_list = find_recipe_links(ideas.ideas)
         flat_links_list = [link for sublist in nested_links_list for link in sublist]
         print("recipies received.")
+        print(flat_links_list[0])
+
+        for link in flat_links_list:
+            link.image_url = find_recipe_image(link.title)
 
         return {"links": flat_links_list, "ideas": ideas.ideas}
+
+        
         
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")

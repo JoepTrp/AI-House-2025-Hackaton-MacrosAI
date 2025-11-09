@@ -26,10 +26,16 @@ class Ideas(BaseModel):
 class RecipeLink(BaseModel):
     title: str
     url: str
+    image_url: str
     source: str
 
 class Links(BaseModel):
     links: list[RecipeLink]
+
+class RecipeImage(BaseModel):
+    url: str 
+    image_url: str
+
 
 class RecipeSelectionContext(BaseModel):
     user_id: str
@@ -150,6 +156,33 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> Links:
 
     return results
 
+# -----------------------
+# STEP 2.5: Find Recipe Images (Web Search)
+# -----------------------
+
+def find_recipe_image(recipe_url: str) -> RecipeImage:
+    """
+    Retrieve the main image of a recipe given its URL.
+    """
+    prompt = f"""
+    You are an expert recipe scraper. Given the following recipe URL:
+    {recipe_url}
+    Extract the URL of the main image of the finished dish.
+    Return only the direct image URL.
+    """
+    
+    response = client.responses.parse(
+        model="gpt-4.1-mini",
+        tools=[{"type": "web_search", "external_web_access": True}],
+        tool_choice="auto",
+        input=[
+            {"role": "system", "content": "You are a professional recipe scraper."},
+            {"role": "user", "content": prompt},
+        ],
+        text_format=RecipeImage,
+    )
+
+    return response.output_parsed
 
 # -----------------------
 # STEP 3: Update User Preferences (Learning/Adaptation)
