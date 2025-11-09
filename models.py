@@ -33,18 +33,15 @@ class Suggestions(BaseModel):
 
 
 class PurchaseRecord(BaseModel):
-    """Logs a single item purchase with a timestamp."""
     item_name: str
     purchase_date: datetime
 
 class Reminder(BaseModel):
-    """A single reminder object to send to the frontend."""
     item_name: str
     last_purchased_days_ago: int
     typical_interval_days: int
 
 class Cart(BaseModel):
-    """Defines the structure of the cart sent from the frontend."""
     items: List[GroceryItem]
 
 class RecipeIdea(BaseModel):
