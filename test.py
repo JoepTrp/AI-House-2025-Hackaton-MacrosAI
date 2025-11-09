@@ -4,7 +4,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 
 client = OpenAI(
-    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
+    api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
     base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
 )
 

@@ -94,6 +94,7 @@ function RootNavigator() {
   });
 
   return () => {
+    
     Notifications.removeNotificationSubscription(notificationListener);
     Notifications.removeNotificationSubscription(responseListener);
   };

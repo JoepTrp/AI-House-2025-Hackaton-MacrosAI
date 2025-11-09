@@ -25,8 +25,8 @@ import smart_reminders
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
 client = OpenAI(
-    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
-    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
+    api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
+    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
 )
 
 app.add_middleware(
@@ -117,11 +117,12 @@ async def get_meal_batch():
     context = CURRENT_USER_CONTEXT 
     try:
         ideas = generate_recipe_ideas(context, 5)
-        nested_links_list = find_recipe_links(ideas)
+        print(ideas.ideas)
+        nested_links_list = find_recipe_links(ideas.ideas)
         flat_links_list = [link for sublist in nested_links_list for link in sublist]
         print("recipies received.")
 
-        return {"recipes": flat_links_list}
+        return {"links": flat_links_list, "ideas": ideas.ideas}
         
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")

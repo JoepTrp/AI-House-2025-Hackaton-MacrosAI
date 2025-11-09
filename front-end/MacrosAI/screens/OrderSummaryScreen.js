@@ -10,9 +10,11 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useUser } from '../context/UserContext';
 
 export default function OrderSummaryScreen({ navigation, route }) {
   const { selectedMeals, ingredientsMap, clearMeals } = route.params;
+  const {orders, setOrders} = useUser()
 
   // Count ingredients
   const ingredientCount = {};
@@ -68,12 +70,12 @@ export default function OrderSummaryScreen({ navigation, route }) {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "Test Notification",
-          body: "This is a local notification!",
+          title: "Order confirmed",
+          body: "Your order has been confirmed! Estimated delivery day Tue 11/11.",
           sound: "default",
           data: { screen: "Home" },
         },
-        trigger: { seconds: 2 },
+        trigger: { seconds: 10 },
       });
       console.log("Notification scheduled");
     } catch (e) {
@@ -162,10 +164,26 @@ export default function OrderSummaryScreen({ navigation, route }) {
         <TouchableOpacity
           style={[styles.button, styles.confirmButton]}
           onPress={() => {
-            Alert.alert('Order Confirmed!');
+            Alert.alert('Order sent to the supermarket!');
+
+            // create a single order object (id, timestamp, meals and items)
+            const newOrder = {
+              id: Date.now().toString(),
+              createdAt: new Date().toISOString(),
+              meals: selectedMeals,
+              items: ingredientsState,
+              deliveryTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+            };
+            
+            setOrders(prev => (Array.isArray(prev) ? [...prev, newOrder] : [newOrder]));
+
+            // other cleanup / UX
             clearMeals();
             triggerNotification();
-            navigation.goBack();
+            console.log(orders);
+            //Potentially send orders to the backend
+            navigation.goBack();  
+
           }}
         >
           <Text style={styles.buttonText}>Confirm</Text>
