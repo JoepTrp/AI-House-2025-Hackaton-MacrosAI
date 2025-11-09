@@ -4,8 +4,8 @@ from urllib.parse import urlparse
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from models import GroceryList
-from recipe_selection import RecipeLink
+from models import GroceryList, GroceryItem, Links
+from recipe_selection import RecipeLink, compute_grocery_items
 
 client = OpenAI(
     api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
@@ -52,68 +52,36 @@ fake_context = RecipeSelectionContext(
     maybe_later_recipes=[]
 )
 
-recipe_link_1 = RecipeLink(title="One Pot Cajun Chicken and Rice",
-                         url="https://www.lecremedelacrumb.com/one-pot-spicy-cajun-chicken-rice/",
-                         source="Creme de la Crumb")
+recipe_link_1 = RecipeLink(
+    title="One Pot Cajun Chicken and Rice",
+    url="https://www.lecremedelacrumb.com/one-pot-spicy-cajun-chicken-rice/",
+    source="Creme de la Crumb",
+    ingredients_per_portion=[
+        GroceryItem(name="chicken breast", quantity="200g"),
+        GroceryItem(name="long grain rice", quantity="100g"),
+        GroceryItem(name="chicken broth", quantity="250ml"),
+        GroceryItem(name="cajun seasoning", quantity="1 tbsp"),
+        GroceryItem(name="olive oil", quantity="1 tbsp"),
+        GroceryItem(name="bell pepper", quantity="1/2"),
+    ],
+)
 
-recipe_link_2 = RecipeLink(title="Grilled Salmon with Garlic and Herbs",
-                         url="https://www.dinneratthezoo.com/grilled-salmon/",
-                         source="Dinner at the Zoo")
-
+recipe_link_2 = RecipeLink(
+    title="Grilled Salmon with Garlic and Herbs",
+    url="https://www.dinneratthezoo.com/grilled-salmon/",
+    source="Dinner at the Zoo",
+    ingredients_per_portion=[
+        GroceryItem(name="salmon fillet", quantity="150g"),
+        GroceryItem(name="olive oil", quantity="1 tbsp"),
+        GroceryItem(name="garlic cloves", quantity="2"),
+        GroceryItem(name="tomato juice", quantity="3 tbsp"),
+        GroceryItem(name="fresh parsley", quantity="1 tbsp"),
+        GroceryItem(name="salt and pepper", quantity="to taste"),
+    ],
+)
 
 selected_recipes_test = [recipe_link_2, recipe_link_1]
 
-def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: list[RecipeLink]) -> GroceryList:
-    """
-    Compute grocery list and estimated price for the selected recipe URLs,
-    using OpenAI web_search and structured parsing.
-    """
-
-    # Collect allowed domains from the recipe URLs
-    allowed_domains = [
-        urlparse(recipe.url).netloc + urlparse(recipe.url).path for recipe in selected_recipes
-    ]
-
-    # Build a simple textual instruction
-    recipe_text = "\n".join([f"- {r.title}" for r in selected_recipes])
-    prompt = f"""
-    You are an expert nutritionist, with an affinity for mathematics and psychology.
-    You are building a grocery list for a person who has the following daily macro requirements:
-    Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
-    Fat: {context.macros.fat}g, Carbs: {context.macros.carbs}g.
-    The user has selected some recipes to cook for next week.
-    Visit each of the following recipe URLs, extract their ingredient lists,
-    and return a combined grocery list in JSON format with item name, quantity, and estimated price.
-    You should estimate a reasonable number of servings so that the diet is varied and balanced, for one week.
-    Merge duplicates (e.g., multiple 'sugar' entries should be combined).
-    Use metric units where possible (Liters L for liquids, grams g for solid foods)
-
-    Recipes:
-    {recipe_text}
-    """
-
-    # Call the Responses API with web_search restricted to the recipe URLs
-    response = client.responses.parse(
-        model="gpt-5-nano",
-        tools=[
-            {
-                "type": "web_search",
-                "filters": {
-                    "allowed_domains": allowed_domains
-                },
-            }
-        ],
-        tool_choice="auto",
-        include=["web_search_call.action.sources"],
-        input=prompt,
-        text_format=GroceryList,
-    )
-
-    # Parse the model output directly into the GroceryList schema
-
-
-    return response.output_parsed
-
-res = compute_grocery_items(fake_context, selected_recipes_test)
+res = compute_grocery_items(fake_context, Links(links=selected_recipes_test))
 
 print(res)
