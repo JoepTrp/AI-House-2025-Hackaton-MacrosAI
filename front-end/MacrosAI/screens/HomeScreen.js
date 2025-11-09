@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Alert, TouchableOpacity, Animated, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, TouchableOpacity, Animated, Dimensions, ActivityIndicator, Linking } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
+
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -19,6 +20,15 @@ export default function HomeScreen({ navigation }) {
   const isFetchingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  function chunkArray(arr, chunkSize) {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += chunkSize) {
+      chunks.push(arr.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+
   const fetchMealBatch = async () => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
@@ -34,26 +44,26 @@ export default function HomeScreen({ navigation }) {
       console.log('Returned from backend', json);
 
       const ideas = Array.isArray(json.ideas) ? json.ideas : [];
-      const links = Array.isArray(json.links) ? json.links : [];
+      const linkChunks = chunkArray(json.links, 4); 
+      const parsedLinks = linkChunks.map(chunk => Object.fromEntries(chunk));
 
       const newRecipes = ideas.map((idea, i) => {
-        // Extract link(s) — adjust depending on your backend’s structure
-        const linkEntry = links[i];
-        let recipeLink = '';
-
-        // Example: linkEntry might look like ["links", ["https://example.com"]]
-        if (Array.isArray(linkEntry) && linkEntry.length > 1 && Array.isArray(linkEntry[1])) {
-          recipeLink = linkEntry[1][0]; // take the first link in the subarray
-        }
+        const link = parsedLinks[i];
 
         return {
           id: `${Date.now()}-${i}`,
-          name: idea.recipe_title || `Recipe ${i + 1}`,
-          image: recipeLink || '', // use the link if it’s an image
-          ingredients: Array.isArray(idea.main_ingredients) ? idea.main_ingredients : [],
-          link: recipeLink, // store it separately for later use (like opening detail view)
+          name: link.title || idea.recipe_title || `Recipe ${i + 1}`,
+          image: '', 
+          ingredients: Array.isArray(link.ingredients_per_portion)
+            ? link.ingredients_per_portion.map(item => item.name)
+            : [],
+          link: link.url || '',
+          source: link.source || '',
         };
       });
+
+
+
 
       if (newRecipes.length) {
         setRecipes(prev => [...prev, ...newRecipes]);
@@ -198,7 +208,9 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.cardIngredients}>
                         {ingredientsMap[card.id].join(', ')}
                         </Text>
-                        
+                        <TouchableOpacity onPress={() => Linking.openURL(card.link)}>
+                          <Text style={{fontSize: 16, color: '#45b6fe', marginBottom:10}}>{card.source}</Text>
+                      </TouchableOpacity>
                     </View>
                 </Animated.View>
 

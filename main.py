@@ -146,7 +146,7 @@ async def get_meal_batch():
         return {"error": "Failed to generate recipes."}
 
 @app.post("/checkout")
-async def checkout_cart(cart: models.Cart):
+async def checkout_cart(cart: List[models.GroceryItem]):
     """
     Receives the user's cart, logs purchases,
     and recalculates purchase patterns.

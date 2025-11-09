@@ -66,6 +66,16 @@ export default function OrderSummaryScreen({ navigation, route }) {
     { id: 'p10', name: 'Milk (1 L)', category: 'Dairy' },
   ];
 
+  const sendPurchase = async () => {
+    const res = await fetch('http://0.0.0.0:8000/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cart: ingredientsMap 
+      }),
+    });
+  }
+
   const triggerNotification = async () => {
     try {
       await Notifications.scheduleNotificationAsync({
@@ -102,7 +112,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
 
       <Text style={[styles.heading, { marginTop: 20 }]}>Ingredients</Text>
 
-      {/* Ingredients List with independent scroll */}
+      {/* Ingredients List*/}
       <FlatList
         data={ingredientsState}
         keyExtractor={(item) => item.name}
@@ -172,16 +182,15 @@ export default function OrderSummaryScreen({ navigation, route }) {
               createdAt: new Date().toISOString(),
               meals: selectedMeals,
               items: ingredientsState,
-              deliveryTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+              deliveryTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now (for testing)
             };
             
             setOrders(prev => (Array.isArray(prev) ? [...prev, newOrder] : [newOrder]));
-
-            // other cleanup / UX
             clearMeals();
             triggerNotification();
             console.log(orders);
-            //Potentially send orders to the backend
+            //TODO: send orders to the backend
+
             navigation.goBack();  
 
           }}
