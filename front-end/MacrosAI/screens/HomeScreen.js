@@ -11,27 +11,29 @@ export default function HomeScreen({ navigation }) {
   const { user } = useUser();
   const [likedMeals, setLikedMeals] = useState([]);
 
-//   useEffect(() => {
-//   const fetchMealBatch = async () => {
-//     try {
-//       const res = await fetch('http://0.0.0.0:8000/get-meal-batch', {
-//         method: 'GET',
-//         headers: { 'Content-Type': 'application/json' },
-//       });
-//       const json = await res.json();
-//       console.log('get-meal-batch response:', json);
+  useEffect(() => {
+  const fetchMealBatch = async () => {
+    try {
+      console.log("use effect happening.")
+      const res = await fetch('http://0.0.0.0:8000/get-meal-batch', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      console.log(res);
+      const json = await res.json();
+      console.log('get-meal-batch response:', json);
 
-//       // optional: if backend returns recipes and you want to replace local recipes
-//       // if (res.ok && Array.isArray(json.recipes) && json.recipes.length) {
-//       //   setRecipes(json.recipes);
-//       // }
-//     } catch (err) {
-//       console.error('Error fetching meal batch:', err);
-//     }
-//   };
+      // optional: if backend returns recipes and you want to replace local recipes
+      // if (res.ok && Array.isArray(json.recipes) && json.recipes.length) {
+      //   setRecipes(json.recipes);
+      // }
+    } catch (err) {
+      console.error('Error fetching meal batch:', err);
+    }
+  };
 
-//   fetchMealBatch();
-// }, []);
+  fetchMealBatch();
+}, []);
 
   const [recipes, setRecipes] = useState([
     { id: '1', name: 'Spaghetti Bolognese', image: "https://www.favfamilyrecipes.com/wp-content/uploads/2025/02/Nicks-Authentic-Italian-Spaghetti-twisting.jpg" },
@@ -83,7 +85,7 @@ export default function HomeScreen({ navigation }) {
   const handleDone = () => {
     if (selectedMeals.length === 0) {
       Alert.alert('No meals selected', 'Please select some meals first.');
-      triggerLocalNotification();
+      // triggerLocalNotification();
       return;
     }
     navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, clearMeals: () => setSelectedMeals([])});

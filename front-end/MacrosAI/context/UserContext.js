@@ -31,7 +31,7 @@ export const UserProvider = ({ children }) => {
     console.log('UserContext.register called with', { email, username, gender, age, weight, activityLevel, goal, height });
 
     try {
-      const res = await fetch(`${BASE}/onboarding/`, {
+      const res = await fetch(`${BASE}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -41,7 +41,6 @@ export const UserProvider = ({ children }) => {
           activity_level: activityLevel,
           goal,
           height,
-          email, 
         }),
       });
 

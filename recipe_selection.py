@@ -5,18 +5,37 @@ Boilerplate for an AI Recipe Generation Pipeline using OpenAI models and web sea
 import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-import json
-import openai
-import requests
-from dataclasses import dataclass
-
 from models import Macros
 
 
 # -----------------------
 # STEP 0: Define Models
 # -----------------------
+
+class RecipeIdea(BaseModel):
+    recipe_title: str
+    main_ingredients: list[str]
+    tags: list[str]
+
+class Ideas(BaseModel):
+    ideas: list[RecipeIdea]
+
+
+
+class RecipeLink(BaseModel):
+    title: str
+    url: str
+    source: str
+
+
+class RecipeSelectionContext(BaseModel):
+    user_id: str
+    macros: Macros
+    goals: dict[str, str] # e.g. {"goal": "lose_weight", "diet": "keto"}
+    liked_recipes: list[RecipeIdea] = Field(default_factory=list)
+    disliked_recipes: list[RecipeIdea] = Field(default_factory=list)
+    maybe_later_recipes: list[RecipeIdea] = Field(default_factory=list)
+
 
 client = OpenAI(
     api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
