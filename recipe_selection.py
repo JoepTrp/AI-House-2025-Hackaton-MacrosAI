@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from models import Macros
+from models import Macros, GroceryList, GroceryItem
 
 
 # -----------------------
