@@ -1,26 +1,20 @@
 
-import os
-import json
 import uvicorn
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from enum import Enum
+from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Dict, Optional
+from datetime import datetime, timedelta
 
 from openai import OpenAI
 
-from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Any, Optional
-
-from datetime import datetime, timedelta
-# conda install -c conda-forge fastapi uvicorn python-dotenv numpy requests
-# pip install openai
-
 from recipe_selection import generate_recipe_ideas
 from recipe_selection import find_recipe_links
-
 import models
 import smart_reminders
+
 # --------------------------- config ---------------------------
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
@@ -58,6 +52,7 @@ class OnboardingData(BaseModel):
     activity_level: ActivityLevel
 
 # --------------------------- global variable ------------------
+# This is a replacement for a database later on, for now we just save data locally
 CURRENT_USER_CONTEXT: Optional[models.RecipeSelectionContext] = None
 
 # --------------------------- helper ---------------------------
@@ -79,9 +74,7 @@ def calculate_targets(data: OnboardingData) -> Dict[str, int]:
         "target_fat": int((target_calories * 0.30) / 9)
     }
 
-
 # --------------------------- actual endpoints -----------------
-
 # initialize user profile
 @app.post("/onboarding")
 async def handle_onboarding(data: OnboardingData):
@@ -124,6 +117,7 @@ async def handle_onboarding(data: OnboardingData):
     print(f"New profile saved: {CURRENT_USER_CONTEXT.model_dump_json(indent=2)}")
     return {"success"}
 
+# generate new recipe cards
 @app.get("/get-meal-batch")
 async def get_meal_batch():
     print("batch is being obtained")
@@ -145,12 +139,9 @@ async def get_meal_batch():
         print(f"Error in recipe pipeline: {e}")
         return {"error": "Failed to generate recipes."}
 
+# log purchased items to track and update patterns
 @app.post("/checkout")
 async def checkout_cart(cart: models.Cart):
-    """
-    Receives the user's cart, logs purchases,
-    and recalculates purchase patterns.
-    """
     global CURRENT_USER_CONTEXT
     if not CURRENT_USER_CONTEXT:
         return {"error": "User profile not set. Please complete onboarding first."}
@@ -158,7 +149,6 @@ async def checkout_cart(cart: models.Cart):
     context = CURRENT_USER_CONTEXT
     now = datetime.now()
 
-    # log every item in the cart to the user's history
     for item in cart.items:
         record = models.PurchaseRecord(
             item_name=item.name.lower().strip(),
@@ -166,19 +156,14 @@ async def checkout_cart(cart: models.Cart):
         )
         context.purchase_history.append(record)
 
-    # update purchase patterns
     context.purchase_patterns = smart_reminders.update_purchase_patterns(context.purchase_history)
     
     print(f"Checkout complete. New patterns: {context.purchase_patterns}")
-    
-    return {"message": "Checkout successful", "patterns_updated": context.purchase_patterns}
+    return {"success"}
 
+# returns reminders for items that the user may want to re-stock based on user purchase patterns
 @app.get("/get-reminders", response_model=Dict[str, List[models.Reminder]])
 async def get_reminders():
-    """
-    Checks user's purchase patterns and returns a list of items
-    they may need to re-stock.
-    """
     global CURRENT_USER_CONTEXT
     if not CURRENT_USER_CONTEXT:
         return {"reminders": []}
