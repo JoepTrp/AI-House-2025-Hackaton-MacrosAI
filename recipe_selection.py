@@ -2,6 +2,8 @@
 recipe_agent_pipeline.py
 Boilerplate for an AI Recipe Generation Pipeline using OpenAI models and web search
 """
+from urllib.parse import urlparse
+
 import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -207,15 +209,51 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> Links:
 # STEP 4: Compute Grocery List
 # -----------------------
 
-# def compute_grocery_items(selected_recipes: List[RecipeLink]) -> List[GroceryItem]:
-#     """Compute grocery list and macros for selected recipes."""
-#     # Placeholder: In reality, you'd scrape ingredients and estimate macros per ingredient
-#     dummy_macros = Macros(calories=100, protein=5, carbs=10, fat=2)
-#     grocery_items = [
-#         GroceryItem(name="Chicken Breast", quantity="500g", macros=dummy_macros, price=5.99),
-#         GroceryItem(name="Broccoli", quantity="300g", macros=dummy_macros, price=2.49),
-#     ]
-#     return grocery_items
+def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: list[RecipeLink]) -> GroceryList:
+    """
+    Compute grocery list and estimated price for the selected recipe URLs,
+    using OpenAI web_search and structured parsing.
+    """
+
+    # Collect allowed domains from the recipe URLs
+    allowed_domains = [
+        urlparse(recipe.url).netloc for recipe in selected_recipes
+    ]
+
+    # Build a simple textual instruction
+    recipe_text = "\n".join([f"- {r.title}: {r.url}" for r in selected_recipes])
+    prompt = f"""
+    You are an expert nutritionist, with an affinity for mathematics and psychology.
+    You are building a grocery list for a person who has the following daily macro requirements:
+    Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
+    Fat: {context.macros.fat}g, Carbs: {context.macros.carbs}g.
+    The user has selected some recipes to cook for next week.
+    Visit each of the following recipe URLs, extract their ingredient lists,
+    and return a combined grocery list in JSON format with item name, quantity, and estimated price.
+    You should estimate a reasonable number of servings so that the diet is varied and balanced, for one week.
+    Merge duplicates (e.g., multiple 'sugar' entries should be combined).
+    Use metric units where possible (Liters L for liquids, grams g for solid foods)
+
+    Recipes:
+    {recipe_text}
+    """
+
+    # Call the Responses API with web_search restricted to the recipe URLs
+    response = client.responses.parse(
+        model="gpt-5",
+        tools=[
+            {
+                "type": "web_search",
+                "filters": {
+                    "allowed_domains": allowed_domains
+                },
+            }
+        ],
+        tool_choice="auto",
+        include=["web_search_call.action.sources"],
+        input=prompt,
+        text_format=GroceryList,
+    )
 
 
 # -----------------------

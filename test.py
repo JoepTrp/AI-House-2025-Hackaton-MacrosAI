@@ -1,7 +1,11 @@
 from typing import List
+from urllib.parse import urlparse
 
 from openai import OpenAI
 from pydantic import BaseModel, Field
+
+from models import GroceryList
+from recipe_selection import RecipeLink
 
 client = OpenAI(
     api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
@@ -37,41 +41,79 @@ class RecipeSelectionContext(BaseModel):
 fake_context = RecipeSelectionContext(
     user_id="user_123",
     macros=Macros(
-        calories=2000,
-        protein=150,
-        carbs=250,
+        calories=2500,
+        protein=100,
+        carbs=120,
         fat=70
     ),
-    goals={"goal": "lose_weight", "diet": "keto"},
+    goals={"goal": "gain muscle", "diet": "high-protein"},
     liked_recipes=[],
     disliked_recipes=[],
     maybe_later_recipes=[]
 )
 
-def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> RecipeIdea | None:
-    """Use OpenAI model to generate structured recipe ideas given user macros and goals"""
+recipe_link_1 = RecipeLink(title="One Pot Cajun Chicken and Rice",
+                         url="https://www.lecremedelacrumb.com/one-pot-spicy-cajun-chicken-rice/",
+                         source="Creme de la Crumb")
 
-    prompt = f"""
-    Think of a creative, healthy recipe idea for someone who wants to {context.goals.get('goal')}
-    with these daily macros:
-    Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
-    Carbs: {context.macros.carbs}g, Fat: {context.macros.fat}g.
-    Each recipe should have a title, description, and about 5 relevant tags describing cuisine type, flavor profile, and key condiments.
+recipe_link_2 = RecipeLink(title="Grilled Salmon with Garlic and Herbs",
+                         url="https://www.dinneratthezoo.com/grilled-salmon/",
+                         source="Dinner at the Zoo")
+
+
+selected_recipes_test = [recipe_link_2, recipe_link_1]
+
+def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: list[RecipeLink]) -> GroceryList:
     """
+    Compute grocery list and estimated price for the selected recipe URLs,
+    using OpenAI web_search and structured parsing.
+    """
+
+    # Collect allowed domains from the recipe URLs
+    allowed_domains = [
+        urlparse(recipe.url).netloc for recipe in selected_recipes
+    ]
+
+    # Build a simple textual instruction
+    recipe_text = "\n".join([f"- {r.title}: {r.url}" for r in selected_recipes])
+    prompt = f"""
+    You are an expert nutritionist, with an affinity for mathematics and psychology.
+    You are building a grocery list for a person who has the following daily macro requirements:
+    Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
+    Fat: {context.macros.fat}g, Carbs: {context.macros.carbs}g.
+    The user has selected some recipes to cook for next week.
+    Visit each of the following recipe URLs, extract their ingredient lists,
+    and return a combined grocery list in JSON format with item name, quantity, and estimated price.
+    You should estimate a reasonable number of servings so that the diet is varied and balanced, for one week.
+    Merge duplicates (e.g., multiple 'sugar' entries should be combined).
+    Use metric units where possible (Liters L for liquids, grams g for solid foods)
+
+    Recipes:
+    {recipe_text}
+    """
+
+    # Call the Responses API with web_search restricted to the recipe URLs
     response = client.responses.parse(
-        model="gpt-5-nano",
-        input=[
-            {"role": "system", "content": "Your name is Sarah Brown. You are an expert nutritionist and recipe planning assistant."},
+        model="gpt-5",
+        tools=[
             {
-                "role": "user",
-                "content": prompt,
-            },
+                "type": "web_search",
+                "filters": {
+                    "allowed_domains": allowed_domains
+                },
+            }
         ],
-        text_format=RecipeIdea,
+        tool_choice="auto",
+        include=["web_search_call.action.sources"],
+        input=prompt,
+        text_format=GroceryList,
     )
+
+    # Parse the model output directly into the GroceryList schema
+
 
     return response.output_parsed
 
-res = generate_recipe_ideas(fake_context, n_ideas=5)
+res = compute_grocery_items(fake_context, selected_recipes_test)
 
 print(res)
