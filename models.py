@@ -4,16 +4,20 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 class Macros(BaseModel):
-    calories: int
-    protein: int
-    carbs: int
-    fat: int
+    calories: float
+    protein: float
+    carbs: float
+    fat: float
 
 class GroceryItem(BaseModel):
     name: str
     quantity: str # 1L, 500g, etc.
-    macros: Macros
-    price: float
+    unit: str
+
+class GroceryList(BaseModel):
+    items: list[GroceryItem]
+    estimated_price: float
+
 
 class Meal(BaseModel):
     meal_name: str
@@ -35,19 +39,23 @@ class PurchaseRecord(BaseModel):
     item_name: str
     purchase_date: datetime
 
+class RecipeLink(BaseModel):
+    title: str
+    ingredients_per_portion: List[GroceryItem]
+    url: str
+    source: str
+
+class Links(BaseModel):
+    links: list[RecipeLink]
+
 class Reminder(BaseModel):
     """A single reminder object to send to the frontend."""
     item_name: str
     last_purchased_days_ago: int
     typical_interval_days: int
 
-class Cart(BaseModel):
-    """Defines the structure of the cart sent from the frontend."""
-    items: List[GroceryItem]
-
 class RecipeIdea(BaseModel):
     recipe_title: str
-    main_ingredients: List[str]
     tags: List[str]
     estimated_macros: Optional[Macros] = None
 
@@ -55,6 +63,8 @@ class RecipeLink(BaseModel):
     title: str
     url: str
     source: str
+    ingredients_per_portion: List[GroceryItem]
+    
 
 class RecipeSelectionContext(BaseModel):
     user_id: str

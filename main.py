@@ -1,27 +1,34 @@
+
 import os
 import json
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from enum import Enum
+
 from openai import OpenAI
+
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from fastapi import Body
+
+from datetime import datetime, timedelta
 # conda install -c conda-forge fastapi uvicorn python-dotenv numpy requests
 # pip install openai
 
-import recipe_selection
+from recipe_selection import generate_recipe_ideas
+from recipe_selection import find_recipe_links
+from recipe_selection import compute_grocery_items
+
 import models
 import smart_reminders
-
 # --------------------------- config ---------------------------
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
 client = OpenAI(
-    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
-    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
+    api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
+    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
 )
 
 app.add_middleware(
@@ -33,10 +40,9 @@ app.add_middleware(
 )
 
 # --------------------------- onboarding models ----------------
-# --------------------------- onboarding models ----------------
 class Goal(str, Enum):
-    lose_weight = "lose_weight"
-    gain_muscle = "gain_muscle"
+    lose_weight = "lose weight"
+    gain_muscle = "gain muscle"
     maintain = "maintain"
 
 class ActivityLevel(str, Enum):
@@ -64,8 +70,8 @@ def calculate_targets(data: OnboardingData) -> Dict[str, int]:
     }
     tdee = bmr * activity_multipliers[data.activity_level]
     
-    if data.goal == "lose_weight": target_calories = tdee - 500
-    elif data.goal == "gain_muscle": target_calories = tdee + 300
+    if data.goal == "lose weight": target_calories = tdee - 500
+    elif data.goal == "gain muscle": target_calories = tdee + 300
     else: target_calories = tdee
         
     return {
@@ -98,31 +104,56 @@ async def handle_onboarding(data: OnboardingData):
         macros=user_macros,
         goals=user_goals
     )
+
+    # ----------------- FAKED USER HABBITS -------------------
+    today = datetime.now()
+    CURRENT_USER_CONTEXT.purchase_history.append(
+        models.PurchaseRecord(item_name="milk", purchase_date=today - timedelta(days=15))
+    )
+    CURRENT_USER_CONTEXT.purchase_history.append(
+        models.PurchaseRecord(item_name="milk", purchase_date=today - timedelta(days=8))
+    )
+    CURRENT_USER_CONTEXT.purchase_history.append(
+        models.PurchaseRecord(item_name="eggs", purchase_date=today - timedelta(days=10))
+    )
+    CURRENT_USER_CONTEXT.purchase_history.append(
+        models.PurchaseRecord(item_name="eggs", purchase_date=today - timedelta(days=5))
+    )
+    CURRENT_USER_CONTEXT.purchase_patterns = smart_reminders.update_purchase_patterns(
+        CURRENT_USER_CONTEXT.purchase_history
+    )
     
     print(f"New profile saved: {CURRENT_USER_CONTEXT.model_dump_json(indent=2)}")
     return {"success"}
 
-@app.post("/get-meal-batch")
+@app.get("/get-meal-batch")
 async def get_meal_batch():
+    print("batch is being obtained")
     global CURRENT_USER_CONTEXT
     if not CURRENT_USER_CONTEXT:
         return {"error": "User profile not set. Please complete onboarding first."}
     
     context = CURRENT_USER_CONTEXT 
     try:
-        ideas = recipe_selection.generate_recipe_ideas(context, 5)
-        nested_links_list = recipe_selection.find_recipe_links(ideas)
+        ideas = generate_recipe_ideas(context, 5)
+        print(ideas.ideas)
+        nested_links_list = find_recipe_links(ideas.ideas)
         flat_links_list = [link for sublist in nested_links_list for link in sublist]
-        
+        print("recipies received.")
 
-        return {"recipes": flat_links_list}
+        return {"links": flat_links_list, "ideas": ideas.ideas}
         
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")
         return {"error": "Failed to generate recipes."}
+    
+@app.post("/get-grocery-items")
+async def grocery_list(selected_recipes: List[models.Links]):
+    print(selected_recipes)
+    return compute_grocery_items(CURRENT_USER_CONTEXT, selected_recipes[0])
 
 @app.post("/checkout")
-async def checkout_cart(cart: models.Cart):
+async def checkout_cart(cart: List[models.GroceryItem]):
     """
     Receives the user's cart, logs purchases,
     and recalculates purchase patterns.
@@ -134,22 +165,21 @@ async def checkout_cart(cart: models.Cart):
     context = CURRENT_USER_CONTEXT
     now = datetime.now()
 
-    # 1. Log every item in the cart to the user's history
+    # log every item in the cart to the user's history
     for item in cart.items:
         record = models.PurchaseRecord(
-            item_name=item.name.lower().strip(), # Normalize name
+            item_name=item.name.lower().strip(),
             purchase_date=now
         )
         context.purchase_history.append(record)
 
-    # 2. Update the purchase patterns by analyzing the full history
+    # update purchase patterns
     context.purchase_patterns = smart_reminders.update_purchase_patterns(context.purchase_history)
     
     print(f"Checkout complete. New patterns: {context.purchase_patterns}")
     
     return {"message": "Checkout successful", "patterns_updated": context.purchase_patterns}
 
-# --- NEW: Endpoint for the frontend to get reminders ---
 @app.get("/get-reminders", response_model=Dict[str, List[models.Reminder]])
 async def get_reminders():
     """
@@ -158,16 +188,14 @@ async def get_reminders():
     """
     global CURRENT_USER_CONTEXT
     if not CURRENT_USER_CONTEXT:
-        return {"reminders": []} # Return empty list, not an error
+        return {"reminders": []}
 
     context = CURRENT_USER_CONTEXT
     today = datetime.now()
     reminders = []
     
-    # Get the last time each item was bought
     latest_purchase_dates = smart_reminders.get_latest_purchase_dates(context.purchase_history)
 
-    # Check each known pattern against the last purchase date
     for item_name, avg_interval in context.purchase_patterns.items():
         if item_name not in latest_purchase_dates:
             continue
@@ -175,10 +203,9 @@ async def get_reminders():
         last_purchase_date = latest_purchase_dates[item_name]
         days_since_last_purchase = (today - last_purchase_date).days
         
-        # The core logic: Is it time to buy again?
         if days_since_last_purchase > avg_interval:
             reminder = models.Reminder(
-                item_name=item_name.title(), # Capitalize for display
+                item_name=item_name.title(),
                 last_purchased_days_ago=days_since_last_purchase,
                 typical_interval_days=int(avg_interval)
             )

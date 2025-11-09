@@ -38,13 +38,6 @@ async function registerForPushNotificationsAsync() {
   token = (await Notifications.getExpoPushTokenAsync()).data;
   console.log('Expo Push Token:', token);
 
-  // Send the token to your server
-  // await fetch('https://your-server.com/api/save-token', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ token }),
-  // });
-
   return token;
 }
 
@@ -94,6 +87,7 @@ function RootNavigator() {
   });
 
   return () => {
+    
     Notifications.removeNotificationSubscription(notificationListener);
     Notifications.removeNotificationSubscription(responseListener);
   };

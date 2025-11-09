@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import {
   View,
@@ -10,10 +10,12 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useUser } from '../context/UserContext';
 
 export default function OrderSummaryScreen({ navigation, route }) {
-  const { selectedMeals, ingredientsMap, clearMeals } = route.params;
-
+  const { selectedMeals, ingredientsMap, setIngredientsMap, obtainedCards, clearMeals, clearIngredients } = route.params;
+  const {orders, setOrders} = useUser()
+  const [isLoading, setIsLoading] = useState(false);
   // Count ingredients
   const ingredientCount = {};
   selectedMeals.forEach(meal => {
@@ -38,6 +40,12 @@ export default function OrderSummaryScreen({ navigation, route }) {
       },
     ]);
   };
+  //init
+  useEffect(() => {
+
+    console.log("INGREDIENTSS MAP",selectedMeals);
+    fetchGroceryItems()
+  },[])
 
   const addProductToIngredients = (product) => {
     setIngredientsState(prev => {
@@ -64,16 +72,45 @@ export default function OrderSummaryScreen({ navigation, route }) {
     { id: 'p10', name: 'Milk (1 L)', category: 'Dairy' },
   ];
 
+  // const sendPurchase = async () => {
+  //   const res = await fetch('http://0.0.0.0:8000/checkout', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({
+  //       cart: ingredientsState 
+  //     }),
+  //   });
+  // }
+
+  const fetchGroceryItems = async () => {
+    console.log("OBTAINED CARDS", obtainedCards);
+    const to_send = obtainedCards.filter(card =>
+      selectedMeals.some(meal => meal.name === card.title)
+    );
+    console.log(to_send);
+    console.log("Sending to backend:", JSON.stringify({ links: to_send }, null, 2));
+
+    console.log("hi");
+    const res = await fetch('http://0.0.0.0:8000/get-grocery-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ links: to_send }])
+    });
+    const json = await res.json();
+    setIngredientsState(json.items); 
+  }
+
+
   const triggerNotification = async () => {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "Test Notification",
-          body: "This is a local notification!",
+          title: "Order confirmed",
+          body: "Your order has been confirmed! Estimated delivery day Tue 11/11.",
           sound: "default",
           data: { screen: "Home" },
         },
-        trigger: { seconds: 2 },
+        trigger: { seconds: 10 },
       });
       console.log("Notification scheduled");
     } catch (e) {
@@ -100,7 +137,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
 
       <Text style={[styles.heading, { marginTop: 20 }]}>Ingredients</Text>
 
-      {/* Ingredients List with independent scroll */}
+      {/* Ingredients List*/}
       <FlatList
         data={ingredientsState}
         keyExtractor={(item) => item.name}
@@ -108,7 +145,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
         renderItem={({ item }) => (
           <View style={styles.ingredientRow}>
             <Text style={styles.text}>
-              {item.count > 1 ? `${item.count}x ${item.name}` : item.name}
+              {item.quantity} {item.unit} {item.name}
             </Text>
             <TouchableOpacity onPress={() => removeIngredient(item.name)}>
               <Text style={{ color: '#c00', fontWeight: '700' }}>Remove</Text>
@@ -162,15 +199,48 @@ export default function OrderSummaryScreen({ navigation, route }) {
         <TouchableOpacity
           style={[styles.button, styles.confirmButton]}
           onPress={() => {
-            Alert.alert('Order Confirmed!');
+            Alert.alert('Order sent to the supermarket!');
+
+            // create a single order object (id, timestamp, meals and items)
+            const newOrder = {
+              id: Date.now().toString(),
+              createdAt: new Date().toISOString(),
+              meals: selectedMeals,
+              items: ingredientsState,
+              deliveryTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now (for testing)
+            };
+            
+            setOrders(prev => (Array.isArray(prev) ? [...prev, newOrder] : [newOrder]));
+            setIngredientsMap(prevMap => {
+              const updatedMap = { ...prevMap }; // copy previous map
+
+              selectedMeals.forEach(meal => {
+                if (updatedMap.hasOwnProperty(meal.id)) {
+                  delete updatedMap[meal.id]; // remove the key
+                }
+              });
+
+              return updatedMap;
+            });
             clearMeals();
             triggerNotification();
-            navigation.goBack();
+
+            console.log(orders);
+            // sendPurchase();
+            navigation.goBack();  
+
           }}
         >
           <Text style={styles.buttonText}>Confirm</Text>
         </TouchableOpacity>
       </View>
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FF6B00" />
+          <Text style={{ marginTop: 8, color: '#333' }}>Loading more recipes…</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -225,4 +295,15 @@ const styles = StyleSheet.create({
   cancelButton: { backgroundColor: 'gray' },
   confirmButton: { backgroundColor: '#FF6B00' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
 });

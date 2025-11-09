@@ -2,24 +2,35 @@
 recipe_agent_pipeline.py
 Boilerplate for an AI Recipe Generation Pipeline using OpenAI models and web search
 """
+from urllib.parse import urlparse
+
 import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-import json
-import openai
-import requests
-from dataclasses import dataclass
-
-from models import Macros
+from models import Macros, GroceryList, GroceryItem, RecipeIdea, RecipeLink
 
 
 # -----------------------
 # STEP 0: Define Models
 # -----------------------
 
+class Ideas(BaseModel):
+    ideas: list[RecipeIdea]
+
+class Links(BaseModel):
+    links: list[RecipeLink]
+
+class RecipeSelectionContext(BaseModel):
+    user_id: str
+    macros: Macros
+    goals: dict[str, str] # e.g. {"goal": "lose_weight", "diet": "keto"}
+    liked_recipes: list[RecipeIdea] = Field(default_factory=list)
+    disliked_recipes: list[RecipeIdea] = Field(default_factory=list)
+    maybe_later_recipes: list[RecipeIdea] = Field(default_factory=list)
+
+
 client = OpenAI(
-    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
+    api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
     base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
 )
 
@@ -80,7 +91,7 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
     Each recipe should have a title, description, and about 5 relevant tags describing cuisine type, flavor profile, and key condiments.
     """
     response = client.responses.parse(
-        model="gpt-5-nano",
+        model="gpt-4.1-mini",
         input=[
             {"role": "system", "content": "Your name is Sarah Brown. You are an expert nutritionist and recipe planning assistant."},
             {
@@ -90,31 +101,30 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
         ],
         text_format=Ideas,
     )
-
     return response.output_parsed
 
 # -----------------------
 # STEP 2: Find Recipe Links (Web Search)
 # -----------------------
 
-def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
+def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
     """
     Uses OpenAI web_search tool to find recipes biased toward highly rated and widely reviewed recipes.
     """
-    results: list[list[RecipeLink]] = []
-
+    results: list[RecipeLink] = []
     for idea in ideas:
-
+        print(ideas)
         prompt = f"""
-        Find 1-3 healthy recipes online for the following recipe idea: "{idea.title}".
+        Find healthy recipes online for the following recipe idea: {idea.recipe_title}.
         Prefer recipes that are:
           - Highly rated (ideally 4 stars or higher)
-          - Rated by a large number of users (hundreds or thousands)
+          - Rated by a large number of users (more than 50)
         Only include recipes that are accessible online.
+        Also, retrieve the main grocery items needed (name and quantities) for one portion
         """
 
-        links_associated_with_this_idea = client.responses.parse(
-            model="gpt-5",
+        link_associated_with_this_idea = client.responses.parse(
+            model="gpt-4.1-mini",
             tools=[{"type": "web_search", "external_web_access": True}],
             tool_choice="auto",
             input=[{"role": "system", "content": "Your name is Michael Douglas. You have are a well-experienced home cook, with a critical eye and attention to detail."},
@@ -123,10 +133,10 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
                 "content": prompt,
                 },
             ],
-            text_format=list[RecipeLink],
+            text_format=RecipeLink,
         )
 
-        results.append(links_associated_with_this_idea.output_parsed)
+        results.append(link_associated_with_this_idea.output_parsed)
 
     return results
 
@@ -189,15 +199,46 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
 # STEP 4: Compute Grocery List
 # -----------------------
 
-# def compute_grocery_items(selected_recipes: List[RecipeLink]) -> List[GroceryItem]:
-#     """Compute grocery list and macros for selected recipes."""
-#     # Placeholder: In reality, you'd scrape ingredients and estimate macros per ingredient
-#     dummy_macros = Macros(calories=100, protein=5, carbs=10, fat=2)
-#     grocery_items = [
-#         GroceryItem(name="Chicken Breast", quantity="500g", macros=dummy_macros, price=5.99),
-#         GroceryItem(name="Broccoli", quantity="300g", macros=dummy_macros, price=2.49),
-#     ]
-#     return grocery_items
+def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: Links) -> GroceryList:
+    """
+    Compute grocery list and estimated price for the selected recipe URLs,
+    using OpenAI web_search and structured parsing.
+    """
+
+    # Build a simple textual instruction
+    recipe_text = "\n".join([f"- {r.title}: {r.ingredients_per_portion}" for r in selected_recipes.links])
+    prompt = f"""
+    You are building a grocery list for a person who has the following daily macro requirements:
+    Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
+    Fat: {context.macros.fat}g, Carbs: {context.macros.carbs}g.
+    The user has selected some recipes to cook for next week. You may find the ingredients per portion for each of the recipes.
+    Compose a grocery list, which allows the user to cook a couple portions of the selected recipes, in a balanced way.
+    If very similar ingredients appear in multiple lists, only include one of that ingredient type in the final grocery list, adding the quantities and multiplying by serving size.
+    Avoid ingredients everyone disposes of (salt, pepper and water) and do not include ingredient mechanical descriptors (instead of chopped cucumbers, just keep cucumbers).
+    For the already defined items: replace the names and quantities with purchasable groceries (replace all tablespoons, teaspoons, with purchasable items or metric units)
+        - Instead of lemon juice, say one lemon
+        - Instead of a tbsp of paprika: say paprika, and give the gram-age of a bottle as quantity
+        - Instead of a tbsp of parsley: say parsley, and give the gram-age of a handful of parsley.
+        - Instead of a cup of milk, olive oil, tomato sauce... replace with multiples of entire containers. For instance, for a cup of milk: add a milk item, which has a quantity of 1L (typical carton)
+    Finally, estimate the total price up to two decimal digits in euros for the grocery list in the Netherlands.
+    Recipes:
+    {recipe_text}
+    """
+
+    print(prompt)
+
+    # Call the Responses API with web_search restricted to the recipe URLs
+    response = client.responses.parse(
+        model="gpt-4.1-mini",
+        input=[{"role": "system", "content": "You are an James Oliver, an expert nutritionist, with an affinity for mathematics and psychology."},
+                {
+                "role": "user",
+                "content": prompt,
+                },
+            ],
+        text_format=GroceryList,
+    )
+    return response.output_parsed
 
 
 # -----------------------
