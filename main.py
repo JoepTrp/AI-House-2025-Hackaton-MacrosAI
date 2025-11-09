@@ -10,8 +10,7 @@ from datetime import datetime, timedelta
 
 from openai import OpenAI
 
-from recipe_selection import generate_recipe_ideas
-from recipe_selection import find_recipe_links
+from recipe_selection import generate_recipe_ideas, find_recipe_links, compute_grocery_items
 import models
 import smart_reminders
 
@@ -138,6 +137,10 @@ async def get_meal_batch():
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")
         return {"error": "Failed to generate recipes."}
+    
+@app.post("/get-grocery-items")
+async def grocery_list(selected_recipes: list[models.RecipeLink]):
+    return compute_grocery_items(CURRENT_USER_CONTEXT, selected_recipes)
 
 # log purchased items to track and update patterns
 @app.post("/checkout")

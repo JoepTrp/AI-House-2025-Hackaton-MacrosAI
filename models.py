@@ -69,3 +69,6 @@ class RecipeSelectionContext(BaseModel):
 
 class Ideas(BaseModel):
     ideas: list[RecipeIdea]
+
+class Links(BaseModel):
+    links: list[RecipeLink]

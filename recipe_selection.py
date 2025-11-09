@@ -8,7 +8,7 @@ import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
-from models import Macros, GroceryItem, GroceryList, RecipeSelectionContext, RecipeIdea, RecipeLink
+from models import Macros, GroceryItem, GroceryList, RecipeSelectionContext, RecipeIdea, RecipeLink, Links
 from models import Ideas
 
 # -----------------------
@@ -186,14 +186,14 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
 # STEP 4: Compute Grocery List
 # -----------------------
 
-def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: list[RecipeLink]) -> GroceryList:
+def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: Links) -> GroceryList:
     """
     Compute grocery list and estimated price for the selected recipe URLs,
     using OpenAI web_search and structured parsing.
     """
 
     # Build a simple textual instruction
-    recipe_text = "\n".join([f"- {r.title}: {r.ingredients_per_portion}" for r in selected_recipes])
+    recipe_text = "\n".join([f"- {r.title}: {r.ingredients_per_portion}" for r in selected_recipes.links])
     prompt = f"""
     You are building a grocery list for a person who has the following daily macro requirements:
     Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
