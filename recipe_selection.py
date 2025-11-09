@@ -100,7 +100,7 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
     """
     results: list[RecipeLink] = []
     for idea in ideas:
-        print(ideas)
+        print(idea)
         prompt = f"""
         Find healthy recipes online for the following recipe idea: {idea.recipe_title}.
         Prefer recipes that are:
@@ -201,6 +201,8 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
     The user has selected some recipes to cook for next week. You may find the ingredients per portion for each of the recipes.
     Compose a grocery list, which allows the user to cook a couple portions of the selected recipes, in a balanced way.
     If very similar ingredients appear in multiple lists, only include one of that ingredient type in the final grocery list, adding the quantities and multiplying by serving size.
+    Avoid ingredients everyone disposes of (salt, pepper and water) and do not include ingredient mechanical descriptors (instead of chopped cucumbers, just keep cucumbers).
+    Finally, estimate the total price up to two significant digits in euros for the grocery list in the Netherlands.
     Recipes:
     {recipe_text}
     """
