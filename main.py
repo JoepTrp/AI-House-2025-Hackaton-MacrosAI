@@ -39,8 +39,8 @@ app.add_middleware(
 
 # --------------------------- onboarding models ----------------
 class Goal(str, Enum):
-    lose_weight = "lose weight"
-    gain_muscle = "gain muscle"
+    lose_weight = "lose_weight"
+    gain_muscle = "gain_muscle"
     maintain = "maintain"
 
 class ActivityLevel(str, Enum):
