@@ -7,16 +7,41 @@ from urllib.parse import urlparse
 import numpy as np
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-from models import Macros, GroceryItem, GroceryList, RecipeSelectionContext, RecipeIdea, RecipeLink
-from test import Ideas
+from models import Macros
+
 
 # -----------------------
 # STEP 0: Define Models
 # -----------------------
 
+class RecipeIdea(BaseModel):
+    recipe_title: str
+    main_ingredients: list[str]
+    tags: list[str]
+
+class Ideas(BaseModel):
+    ideas: list[RecipeIdea]
+
+
+class RecipeLink(BaseModel):
+    title: str
+    url: str
+    source: str
+
+class Links(BaseModel):
+    links: list[RecipeLink]
+
+class RecipeSelectionContext(BaseModel):
+    user_id: str
+    macros: Macros
+    goals: dict[str, str] # e.g. {"goal": "lose_weight", "diet": "keto"}
+    liked_recipes: list[RecipeIdea] = Field(default_factory=list)
+    disliked_recipes: list[RecipeIdea] = Field(default_factory=list)
+    maybe_later_recipes: list[RecipeIdea] = Field(default_factory=list)
+
+
 client = OpenAI(
-    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
+    api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
     base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
 )
 
@@ -77,7 +102,7 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
     Each recipe should have a title, description, and about 5 relevant tags describing cuisine type, flavor profile, and key condiments.
     """
     response = client.responses.parse(
-        model="gpt-5-nano",
+        model="gpt-4.1-mini",
         input=[
             {"role": "system", "content": "Your name is Sarah Brown. You are an expert nutritionist and recipe planning assistant."},
             {
@@ -87,23 +112,21 @@ def generate_recipe_ideas(context: RecipeSelectionContext, n_ideas: int = 5) -> 
         ],
         text_format=Ideas,
     )
-
     return response.output_parsed
 
 # -----------------------
 # STEP 2: Find Recipe Links (Web Search)
 # -----------------------
 
-def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
+def find_recipe_links(ideas: list[RecipeIdea]) -> Links:
     """
     Uses OpenAI web_search tool to find recipes biased toward highly rated and widely reviewed recipes.
     """
     results: list[list[RecipeLink]] = []
-
     for idea in ideas:
-
+        print(ideas)
         prompt = f"""
-        Find 1-3 healthy recipes online for the following recipe idea: "{idea.title}".
+        Find 1-3 healthy recipes online for the following recipe idea: {idea.recipe_title}.
         Prefer recipes that are:
           - Highly rated (ideally 4 stars or higher)
           - Rated by a large number of users (hundreds or thousands)
@@ -111,7 +134,7 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
         """
 
         links_associated_with_this_idea = client.responses.parse(
-            model="gpt-5",
+            model="gpt-4.1-mini",
             tools=[{"type": "web_search", "external_web_access": True}],
             tool_choice="auto",
             input=[{"role": "system", "content": "Your name is Michael Douglas. You have are a well-experienced home cook, with a critical eye and attention to detail."},
@@ -120,7 +143,7 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[list[RecipeLink]]:
                 "content": prompt,
                 },
             ],
-            text_format=list[RecipeLink],
+            text_format=Links,
         )
 
         results.append(links_associated_with_this_idea.output_parsed)

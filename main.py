@@ -1,27 +1,32 @@
+
 import os
 import json
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from enum import Enum
+
 from openai import OpenAI
+
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
+
 from datetime import datetime, timedelta
 # conda install -c conda-forge fastapi uvicorn python-dotenv numpy requests
 # pip install openai
 
-import recipe_selection
+from recipe_selection import generate_recipe_ideas
+from recipe_selection import find_recipe_links
+
 import models
 import smart_reminders
-
 # --------------------------- config ---------------------------
 load_dotenv()
 app = FastAPI(title="Smart Meal Swiper Backend")
 client = OpenAI(
-    api_key = "sk-FAyzaUaK8JlUzvrmIU2XlA",
-    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1/chat/completions"
+    api_key = "sk-Q_wlHlL9BIrIBosXizyeSQ",
+    base_url = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
 )
 
 app.add_middleware(
@@ -34,8 +39,8 @@ app.add_middleware(
 
 # --------------------------- onboarding models ----------------
 class Goal(str, Enum):
-    lose_weight = "lose_weight"
-    gain_muscle = "gain_muscle"
+    lose_weight = "lose weight"
+    gain_muscle = "gain muscle"
     maintain = "maintain"
 
 class ActivityLevel(str, Enum):
@@ -63,8 +68,8 @@ def calculate_targets(data: OnboardingData) -> Dict[str, int]:
     }
     tdee = bmr * activity_multipliers[data.activity_level]
     
-    if data.goal == "lose_weight": target_calories = tdee - 500
-    elif data.goal == "gain_muscle": target_calories = tdee + 300
+    if data.goal == "lose weight": target_calories = tdee - 500
+    elif data.goal == "gain muscle": target_calories = tdee + 300
     else: target_calories = tdee
         
     return {
@@ -119,20 +124,22 @@ async def handle_onboarding(data: OnboardingData):
     print(f"New profile saved: {CURRENT_USER_CONTEXT.model_dump_json(indent=2)}")
     return {"success"}
 
-@app.post("/get-meal-batch")
+@app.get("/get-meal-batch")
 async def get_meal_batch():
+    print("batch is being obtained")
     global CURRENT_USER_CONTEXT
     if not CURRENT_USER_CONTEXT:
         return {"error": "User profile not set. Please complete onboarding first."}
     
     context = CURRENT_USER_CONTEXT 
     try:
-        ideas = recipe_selection.generate_recipe_ideas(context, 5)
-        nested_links_list = recipe_selection.find_recipe_links(ideas)
+        ideas = generate_recipe_ideas(context, 5)
+        print(ideas.ideas)
+        nested_links_list = find_recipe_links(ideas.ideas)
         flat_links_list = [link for sublist in nested_links_list for link in sublist]
-        
+        print("recipies received.")
 
-        return {"recipes": flat_links_list}
+        return {"links": flat_links_list, "ideas": ideas.ideas}
         
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")
