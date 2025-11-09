@@ -5,13 +5,15 @@
 
 This is a list of ideas we envisioned for our product, which would complete the functionality of the agent.
 
-## More customizability
+## More customizability and a nicer interface.
 
-The user should be able to provide a multitude of goals and diets, perhaps even detailed body composition.
+The user should be able to provide a multitude of goals and diets, perhaps even detailed body composition. The API calls currently would make their integration very easy.
+With unlimited compute power, we'd make the agent generate enticing images for the recipes it suggests, to hook the user to use the app.
 
 ## Connecting APIs
 
 We still need to connect to real-world supermarkets to make requests for food. This could be used to inform the agent on typical stocks and prices instead of relying on estimations to provide data. We'd also need to include a form of location retrieval to inform the agent where to search for supermarkets / restaurants (future extension).
+We should also include a payment and location system to enable deliveries.
 
 ### Fine-tuning the Recommender System
 
