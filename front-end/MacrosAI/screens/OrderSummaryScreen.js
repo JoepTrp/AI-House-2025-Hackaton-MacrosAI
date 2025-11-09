@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import {
   View,
@@ -13,9 +13,9 @@ import {
 import { useUser } from '../context/UserContext';
 
 export default function OrderSummaryScreen({ navigation, route }) {
-  const { selectedMeals, ingredientsMap, clearMeals } = route.params;
+  const { selectedMeals, ingredientsMap, obtainedCards, clearMeals, clearIngredients } = route.params;
   const {orders, setOrders} = useUser()
-
+  const [isLoading, setIsLoading] = useState(false);
   // Count ingredients
   const ingredientCount = {};
   selectedMeals.forEach(meal => {
@@ -40,6 +40,12 @@ export default function OrderSummaryScreen({ navigation, route }) {
       },
     ]);
   };
+  //init
+  useEffect(() => {
+
+    console.log("INGREDIENTSS MAP",selectedMeals);
+    fetchGroceryItems()
+  })
 
   const addProductToIngredients = (product) => {
     setIngredientsState(prev => {
@@ -71,10 +77,28 @@ export default function OrderSummaryScreen({ navigation, route }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        cart: ingredientsMap 
+        cart: obtainedCards 
       }),
     });
   }
+
+  const fetchGroceryItems = async () => {
+    console.log("OBTAINED CARDS", obtainedCards);
+    const to_send = obtainedCards.filter(card =>
+      selectedMeals.some(meal => meal.name === card.title)
+    );
+    console.log(to_send);
+    
+    const res = await fetch('http://0.0.0.0:8000/get-grocery-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        selected_recipes: to_send 
+      }),
+    });
+    console.log(res);
+  }
+
 
   const triggerNotification = async () => {
     try {
@@ -187,6 +211,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
             
             setOrders(prev => (Array.isArray(prev) ? [...prev, newOrder] : [newOrder]));
             clearMeals();
+            clearIngredients();
             triggerNotification();
             console.log(orders);
             //TODO: send orders to the backend
@@ -198,6 +223,13 @@ export default function OrderSummaryScreen({ navigation, route }) {
           <Text style={styles.buttonText}>Confirm</Text>
         </TouchableOpacity>
       </View>
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FF6B00" />
+          <Text style={{ marginTop: 8, color: '#333' }}>Loading more recipes…</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -252,4 +284,15 @@ const styles = StyleSheet.create({
   cancelButton: { backgroundColor: 'gray' },
   confirmButton: { backgroundColor: '#FF6B00' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
 });

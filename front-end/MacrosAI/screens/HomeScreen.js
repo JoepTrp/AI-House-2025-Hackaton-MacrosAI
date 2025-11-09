@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, Alert, TouchableOpacity, Animated, Dimen
 import Swiper from 'react-native-deck-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
+import * as Notifications from 'expo-notifications'
 
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -13,9 +14,8 @@ export default function HomeScreen({ navigation }) {
   const [likedMeals, setLikedMeals] = useState([]);
   const swippedRef = useRef(0);
   const [recipes, setRecipes] = useState([]);
-
-  const [ingredientsMap, setIngredientsMap] = useState({}
-  );
+  const [obtainedCards, setObtainedCards] = useState([]);
+  const [ingredientsMap, setIngredientsMap] = useState({});
 
   const isFetchingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +26,33 @@ export default function HomeScreen({ navigation }) {
       chunks.push(arr.slice(i, i + chunkSize));
     }
     return chunks;
+  }
+
+  const triggerReminderNotification = async (reminder) => {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Restock Reminder",
+            body: "You may need to buy " + reminder.item_name + " (last purchased " + reminder.last_purchased_days_ago + " days ago)",
+            sound: "default",
+            data: { screen: "Home" },
+          },
+          trigger: { seconds: 0 },
+        });
+        console.log("Notification scheduled");
+      } catch (e) {
+        console.error("Error scheduling notification:", e);
+      }
+    };
+
+  async function fetchReminders() {
+    const res = await fetch("http://0.0.0.0:8000/get-reminders");
+    const json = await res.json();
+    console.log("Reminders happening.", json);
+    
+    json.reminders.forEach(reminder => {
+      triggerReminderNotification(reminder);
+    });
   }
 
 
@@ -42,11 +69,11 @@ export default function HomeScreen({ navigation }) {
       });
       const json = await res.json();
       console.log('Returned from backend', json);
-
       const ideas = Array.isArray(json.ideas) ? json.ideas : [];
       const linkChunks = chunkArray(json.links, 4); 
       const parsedLinks = linkChunks.map(chunk => Object.fromEntries(chunk));
-
+      console.log(parsedLinks);
+      setObtainedCards(prev => [...prev, ...parsedLinks]);
       const newRecipes = ideas.map((idea, i) => {
         const link = parsedLinks[i];
 
@@ -61,9 +88,6 @@ export default function HomeScreen({ navigation }) {
           source: link.source || '',
         };
       });
-
-
-
 
       if (newRecipes.length) {
         setRecipes(prev => [...prev, ...newRecipes]);
@@ -86,6 +110,7 @@ export default function HomeScreen({ navigation }) {
   // initial fetch
   useEffect(() => {
     fetchMealBatch();
+    fetchReminders();
   }, []);
 
   const [selectedMeals, setSelectedMeals] = useState([]);
@@ -116,7 +141,7 @@ export default function HomeScreen({ navigation }) {
       Alert.alert('No meals selected', 'Please select some meals first.');
       return;
     }
-    navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, clearMeals: () => setSelectedMeals([])});
+    navigation.navigate("OrderSummary", {selectedMeals, ingredientsMap, obtainedCards, clearMeals: () => setSelectedMeals([]), clearIngredients: () => setIngredientsMap({})});
   };
 
   if (recipes.length === 0) {
@@ -312,7 +337,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100,
+    zIndex: 10000,
   },
 
 });

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 
 from recipe_selection import generate_recipe_ideas
 from recipe_selection import find_recipe_links
+from recipe_selection import compute_grocery_items
 
 import models
 import smart_reminders
@@ -144,6 +145,10 @@ async def get_meal_batch():
     except Exception as e:
         print(f"Error in recipe pipeline: {e}")
         return {"error": "Failed to generate recipes."}
+    
+@app.post("/get-grocery-items")
+async def grocery_list(selected_recipes: models.Links):
+    return compute_grocery_items(CURRENT_USER_CONTEXT, selected_recipes)
 
 @app.post("/checkout")
 async def checkout_cart(cart: List[models.GroceryItem]):

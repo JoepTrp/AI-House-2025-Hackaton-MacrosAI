@@ -17,6 +17,7 @@ class GroceryList(BaseModel):
     items: list[GroceryItem]
     estimated_price: float
 
+
 class Meal(BaseModel):
     meal_name: str
     description: str
@@ -36,6 +37,15 @@ class PurchaseRecord(BaseModel):
     """Logs a single item purchase with a timestamp."""
     item_name: str
     purchase_date: datetime
+
+class RecipeLink(BaseModel):
+    title: str
+    ingredients_per_portion: List[GroceryItem]
+    url: str
+    source: str
+
+class Links(BaseModel):
+    links: list[RecipeLink]
 
 class Reminder(BaseModel):
     """A single reminder object to send to the frontend."""

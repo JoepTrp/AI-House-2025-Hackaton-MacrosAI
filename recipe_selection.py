@@ -199,14 +199,14 @@ def find_recipe_links(ideas: list[RecipeIdea]) -> list[RecipeLink]:
 # STEP 4: Compute Grocery List
 # -----------------------
 
-def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: list[RecipeLink]) -> GroceryList:
+def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: Links) -> GroceryList:
     """
     Compute grocery list and estimated price for the selected recipe URLs,
     using OpenAI web_search and structured parsing.
     """
 
     # Build a simple textual instruction
-    recipe_text = "\n".join([f"- {r.title}: {r.ingredients_per_portion}" for r in selected_recipes])
+    recipe_text = "\n".join([f"- {r.title}: {r.ingredients_per_portion}" for r in selected_recipes.links])
     prompt = f"""
     You are building a grocery list for a person who has the following daily macro requirements:
     Calories: {context.macros.calories}, Protein: {context.macros.protein}g,
@@ -214,13 +214,17 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: lis
     The user has selected some recipes to cook for next week. You may find the ingredients per portion for each of the recipes.
     Compose a grocery list, which allows the user to cook a couple portions of the selected recipes, in a balanced way.
     If very similar ingredients appear in multiple lists, only include one of that ingredient type in the final grocery list, adding the quantities and multiplying by serving size.
+    Avoid ingredients everyone disposes of (salt, pepper and water) and do not include ingredient mechanical descriptors (instead of chopped cucumbers, just keep cucumbers).
+    Finally, estimate the total price up to two significant digits in euros for the grocery list in the Netherlands.
     Recipes:
     {recipe_text}
     """
 
+    print(prompt)
+
     # Call the Responses API with web_search restricted to the recipe URLs
     response = client.responses.parse(
-        model="gpt-5",
+        model="gpt-4.1-mini",
         input=[{"role": "system", "content": "You are an James Oliver, an expert nutritionist, with an affinity for mathematics and psychology."},
                 {
                 "role": "user",
