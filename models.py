@@ -9,8 +9,11 @@ class Macros(BaseModel):
 class GroceryItem(BaseModel):
     name: str
     quantity: str # 1L, 500g, etc.
-    macros: Macros
     price: float
+
+class GroceryList(BaseModel):
+    items: list[GroceryItem]
+    estimated_price: float
 
 class Meal(BaseModel):
     meal_name: str
