@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 class Macros(BaseModel):
-    calories: int
-    protein: int
-    carbs: int
-    fat: int
+    calories: float
+    protein: float
+    carbs: float
+    fat: float
 
 class GroceryItem(BaseModel):
     name: str
