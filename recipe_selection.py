@@ -215,7 +215,12 @@ def compute_grocery_items(context: RecipeSelectionContext, selected_recipes: Lin
     Compose a grocery list, which allows the user to cook a couple portions of the selected recipes, in a balanced way.
     If very similar ingredients appear in multiple lists, only include one of that ingredient type in the final grocery list, adding the quantities and multiplying by serving size.
     Avoid ingredients everyone disposes of (salt, pepper and water) and do not include ingredient mechanical descriptors (instead of chopped cucumbers, just keep cucumbers).
-    Finally, estimate the total price up to two significant digits in euros for the grocery list in the Netherlands.
+    For the already defined items: replace the names and quantities with purchasable groceries (replace all tablespoons, teaspoons, with purchasable items or metric units)
+        - Instead of lemon juice, say one lemon
+        - Instead of a tbsp of paprika: say paprika, and give the gram-age of a bottle as quantity
+        - Instead of a tbsp of parsley: say parsley, and give the gram-age of a handful of parsley.
+        - Instead of a cup of milk, olive oil, tomato sauce... replace with multiples of entire containers. For instance, for a cup of milk: add a milk item, which has a quantity of 1L (typical carton)
+    Finally, estimate the total price up to two decimal digits in euros for the grocery list in the Netherlands.
     Recipes:
     {recipe_text}
     """

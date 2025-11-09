@@ -45,7 +45,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
 
     console.log("INGREDIENTSS MAP",selectedMeals);
     fetchGroceryItems()
-  })
+  },[])
 
   const addProductToIngredients = (product) => {
     setIngredientsState(prev => {
@@ -72,15 +72,15 @@ export default function OrderSummaryScreen({ navigation, route }) {
     { id: 'p10', name: 'Milk (1 L)', category: 'Dairy' },
   ];
 
-  const sendPurchase = async () => {
-    const res = await fetch('http://0.0.0.0:8000/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cart: obtainedCards 
-      }),
-    });
-  }
+  // const sendPurchase = async () => {
+  //   const res = await fetch('http://0.0.0.0:8000/checkout', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({
+  //       cart: ingredientsState 
+  //     }),
+  //   });
+  // }
 
   const fetchGroceryItems = async () => {
     console.log("OBTAINED CARDS", obtainedCards);
@@ -88,15 +88,16 @@ export default function OrderSummaryScreen({ navigation, route }) {
       selectedMeals.some(meal => meal.name === card.title)
     );
     console.log(to_send);
-    
+    console.log("Sending to backend:", JSON.stringify({ links: to_send }, null, 2));
+
+    console.log("hi");
     const res = await fetch('http://0.0.0.0:8000/get-grocery-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        selected_recipes: to_send 
-      }),
+      body: JSON.stringify([{ links: to_send }])
     });
-    console.log(res);
+    const json = await res.json();
+    setIngredientsState(json.items); 
   }
 
 
@@ -144,7 +145,7 @@ export default function OrderSummaryScreen({ navigation, route }) {
         renderItem={({ item }) => (
           <View style={styles.ingredientRow}>
             <Text style={styles.text}>
-              {item.count > 1 ? `${item.count}x ${item.name}` : item.name}
+              {item.quantity} {item.unit} {item.name}
             </Text>
             <TouchableOpacity onPress={() => removeIngredient(item.name)}>
               <Text style={{ color: '#c00', fontWeight: '700' }}>Remove</Text>
@@ -210,12 +211,22 @@ export default function OrderSummaryScreen({ navigation, route }) {
             };
             
             setOrders(prev => (Array.isArray(prev) ? [...prev, newOrder] : [newOrder]));
-            clearMeals();
-            clearIngredients();
-            triggerNotification();
-            console.log(orders);
-            //TODO: send orders to the backend
+            setIngredientsMap(prevMap => {
+              const updatedMap = { ...prevMap }; // copy previous map
 
+              selectedMeals.forEach(meal => {
+                if (updatedMap.hasOwnProperty(meal.id)) {
+                  delete updatedMap[meal.id]; // remove the key
+                }
+              });
+
+              return updatedMap;
+            });
+            clearMeals();
+            triggerNotification();
+
+            console.log(orders);
+            // sendPurchase();
             navigation.goBack();  
 
           }}

@@ -11,6 +11,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
+from fastapi import Body
 
 from datetime import datetime, timedelta
 # conda install -c conda-forge fastapi uvicorn python-dotenv numpy requests
@@ -147,8 +148,9 @@ async def get_meal_batch():
         return {"error": "Failed to generate recipes."}
     
 @app.post("/get-grocery-items")
-async def grocery_list(selected_recipes: models.Links):
-    return compute_grocery_items(CURRENT_USER_CONTEXT, selected_recipes)
+async def grocery_list(selected_recipes: List[models.Links]):
+    print(selected_recipes)
+    return compute_grocery_items(CURRENT_USER_CONTEXT, selected_recipes[0])
 
 @app.post("/checkout")
 async def checkout_cart(cart: List[models.GroceryItem]):

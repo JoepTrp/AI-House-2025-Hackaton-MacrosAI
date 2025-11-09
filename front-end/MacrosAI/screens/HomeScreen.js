@@ -73,7 +73,7 @@ export default function HomeScreen({ navigation }) {
       const linkChunks = chunkArray(json.links, 4); 
       const parsedLinks = linkChunks.map(chunk => Object.fromEntries(chunk));
       console.log(parsedLinks);
-      setObtainedCards(prev => [...prev, ...parsedLinks]);
+      setObtainedCards(parsedLinks)
       const newRecipes = ideas.map((idea, i) => {
         const link = parsedLinks[i];
 

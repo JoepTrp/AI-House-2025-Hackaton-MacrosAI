@@ -12,6 +12,7 @@ class Macros(BaseModel):
 class GroceryItem(BaseModel):
     name: str
     quantity: str # 1L, 500g, etc.
+    unit: str
 
 class GroceryList(BaseModel):
     items: list[GroceryItem]
